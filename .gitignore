@@ -1,0 +1,8 @@
+/bin/
+/dist/
+/tlsferry
+/config.json
+*.pem
+*.key
+*.crt
+.DS_Store

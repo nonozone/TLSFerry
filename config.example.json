@@ -1,0 +1,36 @@
+{
+  "renew_before": "720h",
+  "certificates": [
+    {
+      "name": "assets-example",
+      "domains": [
+        "assets.example.com"
+      ],
+      "issuer": {
+        "type": "acme",
+        "email": "ops@example.com",
+        "directory_url": "https://acme-v02.api.letsencrypt.org/directory",
+        "challenge": "dns-01",
+        "dns_provider": "dnspod",
+        "credential": "env:TENCENTCLOUD"
+      },
+      "deployments": [
+        {
+          "provider": "tencent-cdn",
+          "target": "assets.example.com",
+          "credential": "env:TENCENTCLOUD"
+        },
+        {
+          "provider": "aliyun-cdn",
+          "target": "assets.example.com",
+          "credential": "env:ALIYUN"
+        },
+        {
+          "provider": "qiniu-cdn",
+          "target": "assets.example.com",
+          "credential": "env:QINIU"
+        }
+      ]
+    }
+  ]
+}
