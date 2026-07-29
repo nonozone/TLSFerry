@@ -51,3 +51,22 @@ func TestProviderFactoryRequiresCloudflareAPIToken(t *testing.T) {
 		t.Fatalf("new() error = %v", err)
 	}
 }
+
+func TestProviderFactoryCreatesTLSFerryCloudProvider(t *testing.T) {
+	factory := providerFactory{credentials: credential.EnvResolver{Lookup: func(name string) (string, bool) {
+		values := map[string]string{
+			"TLSFERRY_CLOUD_API_URL":   "https://api.tlsferry.com",
+			"TLSFERRY_CLOUD_API_TOKEN": "job-token",
+		}
+		value, ok := values[name]
+		return value, ok
+	}}}
+
+	provider, err := factory.new("tlsferry-cloud", "env:TLSFERRY_CLOUD")
+	if err != nil {
+		t.Fatalf("new() returned an unexpected error: %v", err)
+	}
+	if provider == nil {
+		t.Fatal("new() returned a nil provider")
+	}
+}

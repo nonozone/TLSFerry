@@ -16,6 +16,17 @@ type providerFactory struct {
 
 func (f providerFactory) new(name, reference string) (challenge.Provider, error) {
 	switch name {
+	case "tlsferry-cloud":
+		values, err := f.credentials.Values(reference, "API_URL", "API_TOKEN")
+		if err != nil {
+			return nil, fmt.Errorf("TLSFerry Cloud DNS credentials: %w", err)
+		}
+		provider, err := newRemoteDNSProvider(values["API_URL"], values["API_TOKEN"], nil)
+		if err != nil {
+			return nil, fmt.Errorf("create TLSFerry Cloud DNS provider: %w", err)
+		}
+		return provider, nil
+
 	case "cloudflare":
 		values, err := f.credentials.Values(reference, "API_TOKEN")
 		if err != nil {

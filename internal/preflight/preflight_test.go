@@ -79,3 +79,25 @@ func TestCheckerAcceptsCloudflareDNSProvider(t *testing.T) {
 		t.Fatalf("Check() returned an unexpected error: %v", err)
 	}
 }
+
+func TestCheckerAcceptsTLSFerryCloudDNSProvider(t *testing.T) {
+	values := map[string]string{
+		"TLSFERRY_CLOUD_API_URL":   "https://api.tlsferry.com",
+		"TLSFERRY_CLOUD_API_TOKEN": "job-token",
+	}
+	checker := Checker{Credentials: credential.EnvResolver{Lookup: func(name string) (string, bool) {
+		value, ok := values[name]
+		return value, ok
+	}}}
+	cfg := config.Config{Certificates: []config.Certificate{{
+		Name: "assets",
+		Issuer: config.Issuer{
+			DNSProvider: "tlsferry-cloud",
+			Credential:  "env:TLSFERRY_CLOUD",
+		},
+	}}}
+
+	if err := checker.Check(cfg); err != nil {
+		t.Fatalf("Check() returned an unexpected error: %v", err)
+	}
+}

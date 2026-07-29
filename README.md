@@ -1,8 +1,15 @@
-# TLSFerry
+# TLSFerry Community Edition
 
-TLSFerry is a Go-based TLS certificate automation tool for issuing certificates through ACME and delivering them to multiple cloud platforms.
+TLSFerry Community Edition (CE) is the open-source, self-hosted edition of TLSFerry. It is a Go-based TLS certificate automation tool for issuing certificates through ACME and delivering them to multiple cloud platforms.
 
 The project can issue real certificates through ACME DNS-01 and deploy them to Tencent Cloud CDN/COS, Alibaba Cloud CDN, and Qiniu CDN.
+
+## Editions
+
+- **TLSFerry CE** is this Apache-2.0 repository. It runs on infrastructure controlled by the user, keeps cloud credentials local, and provides the CLI, DNS providers, renewal scheduling, discovery, and multi-cloud certificate delivery.
+- **TLSFerry Cloud** is the planned managed service. Its hosted DNS validation, account system, billing, orchestration, and operations control plane are separate from this repository.
+
+The shared certificate and provider behavior remains in CE. The commercial service sells hosted operation and reduced maintenance rather than a different certificate format or a deliberately broken community build.
 
 ## Why Go
 
@@ -137,6 +144,7 @@ TLSFerry changes only the temporary `_acme-challenge` TXT record. It does not ch
 
 | DNS provider | Config value | Credential fields | Recommended access |
 | --- | --- | --- | --- |
+| TLSFerry remote control plane | `tlsferry-cloud` | `API_URL`, short-lived `API_TOKEN` | Job-scoped access to one enrolled hostname and delegated target |
 | Cloudflare | `cloudflare` | `API_TOKEN` | `Zone:DNS:Edit` and `Zone:Zone:Read`, restricted to the required zone |
 | DNSPod | `dnspod` | `SECRET_ID`, `SECRET_KEY` | DNS record read/write access for the required public zone |
 | Alibaba Cloud DNS | `aliyun` | `ACCESS_KEY_ID`, `ACCESS_KEY_SECRET` | DNS record read/write access for the required zone |
@@ -156,6 +164,8 @@ tlsferry auth login tencent
 ```
 
 If DNS is hosted by Cloudflare while CDN is hosted by Tencent Cloud, use separate credential references in the same certificate entry: `keychain:CLOUDFLARE` under `issuer` and `keychain:TENCENTCLOUD` under `deployments`.
+
+The `tlsferry-cloud` provider is the public executor-side contract for a hosted control plane. It uses a short-lived job token to present and clean one delegated ACME challenge without exposing the control plane's authoritative DNS credentials. The client is implemented in CE, but the hosted endpoint is not included or generally available. See [the remote DNS challenge protocol](docs/remote-dns-protocol.md).
 
 ## Issuing a certificate
 
@@ -275,7 +285,7 @@ For unattended Linux servers, cron and systemd timers remain supported manually.
 make verify
 ```
 
-The module path currently uses `github.com/nonozone/TLSFerry` and can be changed before the repository is published if the final GitHub owner differs.
+The canonical Go module path is `github.com/nonozone/TLSFerry`.
 
 ## License
 

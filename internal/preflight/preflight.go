@@ -17,9 +17,10 @@ type providerRequirement struct {
 }
 
 var dnsProviders = map[string]providerRequirement{
-	"cloudflare": {fields: []string{"API_TOKEN"}},
-	"dnspod":     {fields: []string{"SECRET_ID", "SECRET_KEY"}},
-	"aliyun":     {fields: []string{"ACCESS_KEY_ID", "ACCESS_KEY_SECRET"}},
+	"tlsferry-cloud": {fields: []string{"API_URL", "API_TOKEN"}},
+	"cloudflare":     {fields: []string{"API_TOKEN"}},
+	"dnspod":         {fields: []string{"SECRET_ID", "SECRET_KEY"}},
+	"aliyun":         {fields: []string{"ACCESS_KEY_ID", "ACCESS_KEY_SECRET"}},
 }
 
 var deploymentProviders = map[string]providerRequirement{
