@@ -15,6 +15,7 @@ All notable changes to TLSFerry CE will be documented here. The project follows 
 
 ### Security
 
+- ACME dependency `github.com/go-acme/lego/v4` is pinned to `v4.34.0` or newer to exclude the HTTP-01 webroot path-traversal vulnerability CVE-2026-40611, even though TLSFerry CE exposes DNS-01 issuance only.
 - Private key and ACME account files use restricted permissions where the operating system exposes POSIX modes.
 - Remote and provider response bodies are excluded from executor errors when they may contain reflected sensitive material.
 - Reachable dependency and standard-library vulnerabilities are release-blocking through `govulncheck`.
