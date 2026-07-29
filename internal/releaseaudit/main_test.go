@@ -1,7 +1,10 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -67,5 +70,52 @@ func TestForbiddenCloudPath(t *testing.T) {
 		if got := forbiddenCloudPath(path); got != want {
 			t.Errorf("forbiddenCloudPath(%q) = %v, want %v", path, got, want)
 		}
+	}
+}
+
+func TestAuditReleaseWorkflowPermissions(t *testing.T) {
+	root := t.TempDir()
+	workflowDir := filepath.Join(root, ".github", "workflows")
+	if err := os.MkdirAll(workflowDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	workflow := `name: Release CE
+permissions: {}
+jobs:
+  verify:
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+  publish:
+    needs: verify
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+`
+	workflowPath := filepath.Join(workflowDir, "release.yml")
+	if err := os.WriteFile(workflowPath, []byte(workflow), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if failures := auditReleaseWorkflowPermissions(root); len(failures) != 0 {
+		t.Fatalf("secure workflow failures = %v", failures)
+	}
+
+	insecure := strings.Replace(workflow, "permissions: {}", "permissions:\n  contents: write", 1)
+	insecure = strings.Replace(insecure, "          persist-credentials: false\n", "", 1)
+	if err := os.WriteFile(workflowPath, []byte(insecure), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	failures := auditReleaseWorkflowPermissions(root)
+	if len(failures) == 0 {
+		t.Fatal("insecure release workflow unexpectedly passed")
 	}
 }

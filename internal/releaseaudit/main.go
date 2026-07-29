@@ -133,6 +133,7 @@ func audit(repository, version, reviewer string) (*report, error) {
 		newCheck("no-sensitive-tracked-files", auditSensitiveTrackedFiles(tracked)),
 		newCheck("ce-cloud-boundary", auditCloudBoundary(root, tracked)),
 		newCheck("apache-2.0-license", auditLicense(root)),
+		newCheck("release-workflow-permissions", auditReleaseWorkflowPermissions(root)),
 	}
 	result := &report{
 		SchemaVersion: 1,
@@ -313,4 +314,96 @@ func auditLicense(root string) []string {
 		return []string{"LICENSE does not contain the Apache License 2.0 header"}
 	}
 	return nil
+}
+
+func auditReleaseWorkflowPermissions(root string) []string {
+	path := filepath.Join(root, ".github", "workflows", "release.yml")
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return []string{"read .github/workflows/release.yml: " + err.Error()}
+	}
+	workflow := string(content)
+	var failures []string
+
+	if !regexp.MustCompile(`(?m)^permissions:\s*\{\}\s*$`).MatchString(workflow) {
+		failures = append(failures, "release workflow must deny permissions by default")
+	}
+	verify, ok := workflowJobBlock(workflow, "verify")
+	if !ok {
+		failures = append(failures, "release workflow is missing the verify job")
+	} else {
+		if !strings.Contains(verify, "    permissions:\n      contents: read") {
+			failures = append(failures, "release verify job must use contents: read")
+		}
+		if !strings.Contains(verify, "          persist-credentials: false") {
+			failures = append(failures, "release verify checkout must disable credential persistence")
+		}
+		if strings.Contains(verify, "GITHUB_TOKEN") {
+			failures = append(failures, "release verify job must not receive GITHUB_TOKEN")
+		}
+	}
+	publish, ok := workflowJobBlock(workflow, "publish")
+	if !ok {
+		failures = append(failures, "release workflow is missing the publish job")
+	} else {
+		if !strings.Contains(publish, "    needs: verify") {
+			failures = append(failures, "release publish job must depend on verify")
+		}
+		if !strings.Contains(publish, "    permissions:\n      contents: write") {
+			failures = append(failures, "release publish job must scope contents: write locally")
+		}
+		if !strings.Contains(publish, "          persist-credentials: false") {
+			failures = append(failures, "release publish checkout must disable credential persistence")
+		}
+		if !strings.Contains(publish, "          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}") {
+			failures = append(failures, "release publish action must receive GITHUB_TOKEN explicitly")
+		}
+	}
+	if strings.Count(workflow, "contents: write") != 1 {
+		failures = append(failures, "release workflow must contain exactly one contents: write grant")
+	}
+	if strings.Count(workflow, "          GITHUB_TOKEN:") != 1 {
+		failures = append(failures, "release workflow must expose GITHUB_TOKEN exactly once")
+	}
+
+	for lineNumber, line := range strings.Split(workflow, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "uses:") {
+			continue
+		}
+		reference := strings.TrimSpace(strings.TrimPrefix(trimmed, "uses:"))
+		if comment := strings.Index(reference, " #"); comment >= 0 {
+			reference = reference[:comment]
+		}
+		at := strings.LastIndex(reference, "@")
+		if at < 0 || !regexp.MustCompile(`^[0-9a-f]{40}$`).MatchString(reference[at+1:]) {
+			failures = append(failures, fmt.Sprintf("release workflow action on line %d is not pinned to a full commit SHA", lineNumber+1))
+		}
+	}
+
+	sort.Strings(failures)
+	return failures
+}
+
+func workflowJobBlock(workflow, name string) (string, bool) {
+	lines := strings.Split(workflow, "\n")
+	start := -1
+	for index, line := range lines {
+		if line == "  "+name+":" {
+			start = index
+			break
+		}
+	}
+	if start < 0 {
+		return "", false
+	}
+	end := len(lines)
+	for index := start + 1; index < len(lines); index++ {
+		line := lines[index]
+		if strings.HasPrefix(line, "  ") && !strings.HasPrefix(line, "    ") && strings.HasSuffix(strings.TrimSpace(line), ":") {
+			end = index
+			break
+		}
+	}
+	return strings.Join(lines[start:end], "\n"), true
 }

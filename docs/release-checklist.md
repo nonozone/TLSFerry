@@ -71,6 +71,7 @@ The gate uses reserved `.invalid` domains, the Let's Encrypt staging directory, 
 
 - Choose a semantic version such as `v0.1.0-rc.1`; the tag must point to the audited commit.
 - Review the generated changelog before pushing the tag.
+- Keep release verification and publication in separate jobs. Verification has read-only repository access; only the dependent publication job receives `contents: write`, and neither checkout persists Git credentials.
 - The Release workflow must pass `artifact-smoke` before publishing six archives and `checksums.txt`.
 - Download one archive, verify its checksum, and confirm `tlsferry version` reports the tag.
 - Keep the previous release available. Binary rollback does not undo certificates already uploaded to cloud providers.
