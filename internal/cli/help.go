@@ -7,7 +7,7 @@ import (
 )
 
 var commandNames = []string{
-	"auth", "completion", "deploy", "discover", "help", "issue", "plan", "preflight", "renew", "service", "validate", "version",
+	"auth", "completion", "deploy", "discover", "enroll", "help", "issue", "plan", "preflight", "renew", "service", "validate", "version",
 }
 
 var commandHelp = map[string]string{
@@ -35,6 +35,10 @@ Options:
   --provider     Required cloud provider
   --credential   env:PROFILE or keychain:PROFILE; defaults to the provider profile
   --format       table (default) or json`,
+	"enroll": `Usage:
+  tlsferry enroll cloud --provider tencent|aliyun|qiniu --domain DOMAIN --email EMAIL --dns-provider PROVIDER --dns-credential REFERENCE [--credential REFERENCE] [--name NAME] [--config FILE] [--execute]
+
+Verifies one domain against the authorized cloud CDN inventory and previews a certificate configuration. No file is changed unless --execute is present.`,
 	"issue": `Usage:
   tlsferry issue --config FILE --certificate NAME [--state-dir DIR] [--output-dir DIR] --accept-tos
 

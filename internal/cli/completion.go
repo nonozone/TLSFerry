@@ -155,7 +155,7 @@ const zshCompletion = `#compdef tlsferry
 
 _tlsferry() {
   local -a commands auth_providers cloud_providers
-  commands=(auth completion deploy discover help issue plan preflight renew service validate version)
+  commands=(auth completion deploy discover enroll help issue plan preflight renew service validate version)
   auth_providers=(cloudflare tencent aliyun qiniu)
   cloud_providers=(tencent aliyun qiniu)
   if (( CURRENT == 2 )); then
@@ -171,6 +171,10 @@ _tlsferry() {
     discover)
       if (( CURRENT == 3 )); then _values 'source' cloud; return; fi
       _arguments '--provider[cloud provider]:provider:(tencent aliyun qiniu)' '--credential[credential reference]:reference' '--format[output format]:format:(table json)'
+      ;;
+    enroll)
+      if (( CURRENT == 3 )); then _values 'source' cloud; return; fi
+      _arguments '--provider[cloud provider]:provider:(tencent aliyun qiniu)' '--domain[exact CDN domain]:domain' '--name[certificate name]:name' '--email[ACME account email]:email' '--dns-provider[DNS provider]:provider:(cloudflare dnspod aliyun tlsferry-cloud)' '--dns-credential[DNS credential reference]:reference' '--credential[cloud credential reference]:reference' '--config[configuration file]:file:_files' '--directory-url[ACME directory URL]:url' '--execute[write enrollment]'
       ;;
     completion)
       if [[ $words[3] == install ]]; then _arguments '--shell[target shell]:shell:(zsh bash fish)'; return; fi
@@ -195,7 +199,7 @@ const bashCompletion = `_tlsferry_completion() {
   prev="${COMP_WORDS[COMP_CWORD-1]}"
   command="${COMP_WORDS[1]}"
   action="${COMP_WORDS[2]}"
-  local commands="auth completion deploy discover help issue plan preflight renew service validate version"
+  local commands="auth completion deploy discover enroll help issue plan preflight renew service validate version"
   local auth_providers="cloudflare tencent aliyun qiniu"
   local cloud_providers="tencent aliyun qiniu"
   if [[ $COMP_CWORD -eq 1 ]]; then COMPREPLY=( $(compgen -W "$commands" -- "$cur") ); return; fi
@@ -211,6 +215,7 @@ const bashCompletion = `_tlsferry_completion() {
       elif [[ "$action" == login && $COMP_CWORD -eq 3 ]]; then COMPREPLY=( $(compgen -W "$auth_providers" -- "$cur") );
       else COMPREPLY=( $(compgen -W "--profile --no-browser" -- "$cur") ); fi ;;
     discover) COMPREPLY=( $(compgen -W "cloud --provider --credential --format" -- "$cur") ) ;;
+    enroll) COMPREPLY=( $(compgen -W "cloud --provider --domain --name --email --dns-provider --dns-credential --credential --config --directory-url --execute" -- "$cur") ) ;;
     completion) COMPREPLY=( $(compgen -W "zsh bash fish install --shell" -- "$cur") ) ;;
     service) COMPREPLY=( $(compgen -W "install status run-now logs uninstall --config --hour --minute --accept-tos --execute" -- "$cur") ) ;;
     issue|deploy|renew|validate|plan|preflight) COMPREPLY=( $(compgen -W "--config --certificate --provider --state-dir --output-dir --input-dir --accept-tos --execute --force" -- "$cur") ) ;;
@@ -220,13 +225,21 @@ complete -F _tlsferry_completion tlsferry
 `
 
 const fishCompletion = `complete -c tlsferry -f
-complete -c tlsferry -n '__fish_use_subcommand' -a 'auth completion deploy discover help issue plan preflight renew service validate version'
+complete -c tlsferry -n '__fish_use_subcommand' -a 'auth completion deploy discover enroll help issue plan preflight renew service validate version'
 complete -c tlsferry -n '__fish_seen_subcommand_from auth' -a 'login status logout'
 complete -c tlsferry -n '__fish_seen_subcommand_from login' -a 'cloudflare tencent aliyun qiniu'
 complete -c tlsferry -n '__fish_seen_subcommand_from discover' -a 'cloud'
 complete -c tlsferry -n '__fish_seen_subcommand_from discover' -l provider -a 'tencent aliyun qiniu'
 complete -c tlsferry -n '__fish_seen_subcommand_from discover' -l credential
 complete -c tlsferry -n '__fish_seen_subcommand_from discover' -l format -a 'table json'
+complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -a 'cloud'
+complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l provider -a 'tencent aliyun qiniu'
+complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l dns-provider -a 'cloudflare dnspod aliyun tlsferry-cloud'
+complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l domain -r
+complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l name -r
+complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l email -r
+complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l dns-credential -r
+complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l directory-url -r
 complete -c tlsferry -n '__fish_seen_subcommand_from completion' -a 'zsh bash fish install'
 complete -c tlsferry -n '__fish_seen_subcommand_from completion' -l shell -a 'zsh bash fish'
 complete -c tlsferry -n '__fish_seen_subcommand_from service' -a 'install status run-now logs uninstall'

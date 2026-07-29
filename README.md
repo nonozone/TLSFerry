@@ -148,7 +148,18 @@ tlsferry discover cloud \
 
 The table reports provider, domain, cloud-side status, HTTPS state, and CNAME. Tencent Cloud discovery uses the CDN domain configuration list, Alibaba Cloud discovery follows every `DescribeUserDomains` page, and Qiniu uses a signed read-only domain-list request.
 
-Discovery does not issue certificates, enable HTTPS, or import domains into `config.json`. Selective import and DNS-control verification are the next safety boundary; a discovered domain must not be silently taken over.
+Discovery does not issue certificates, enable HTTPS, or import domains into `config.json`. A discovered domain must be selected explicitly through the enrollment preview:
+
+```bash
+tlsferry enroll cloud \
+  --provider tencent \
+  --domain nos.example.com \
+  --email ops@example.com \
+  --dns-provider cloudflare \
+  --dns-credential keychain:CLOUDFLARE
+```
+
+The command scans the authorized account and refuses a domain that is absent or already enrolled. It prints the exact ACME and deployment plan without changing the file. Add `--execute` to append only that domain atomically to `config.json`, then run `tlsferry preflight`. Enrollment never issues a certificate, changes DNS, or enables CDN HTTPS by itself.
 
 ## DNS-01 providers
 
@@ -285,7 +296,7 @@ Linux installs `tlsferry-renew.service` and `tlsferry-renew.timer` under the cur
 
 ## Planned milestones
 
-1. Add selective import, DNS-control verification, and explicit enrollment for discovered domains.
+1. Add optional online DNS-control diagnostics before the first production issuance.
 2. Add a Windows Task Scheduler installer.
 3. Add renewable STS/OIDC/SSO and cloud instance-role credential adapters.
 4. Add webhook and email notification adapters.

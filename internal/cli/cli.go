@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 	"github.com/nonozone/TLSFerry/internal/deployment"
 	"github.com/nonozone/TLSFerry/internal/discovery"
 	"github.com/nonozone/TLSFerry/internal/engine"
+	"github.com/nonozone/TLSFerry/internal/enrollment"
 	"github.com/nonozone/TLSFerry/internal/preflight"
 	"github.com/nonozone/TLSFerry/internal/renewal"
 	"github.com/nonozone/TLSFerry/internal/service"
@@ -74,6 +76,8 @@ func RunWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return runService(args[1:], stdout, stderr)
 	case "discover":
 		return runDiscover(args[1:], stdout, stderr)
+	case "enroll":
+		return runEnroll(args[1:], stdout, stderr)
 	case "completion":
 		return runCompletion(args[1:], stdout, stderr)
 	case "-h", "--help":
@@ -91,6 +95,94 @@ func RunWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 }
 
 var newCloudScanner = discovery.NewScanner
+
+func runEnroll(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || args[0] != "cloud" {
+		fmt.Fprintln(stderr, "enroll: expected cloud")
+		return 2
+	}
+	flags := flag.NewFlagSet("enroll cloud", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	provider := flags.String("provider", "", "cloud provider: tencent, aliyun, or qiniu")
+	domain := flags.String("domain", "", "one discovered CDN domain to enroll")
+	name := flags.String("name", "", "certificate name; defaults to the domain")
+	email := flags.String("email", "", "ACME account email")
+	dnsProvider := flags.String("dns-provider", "", "DNS-01 provider: cloudflare, dnspod, aliyun, or tlsferry-cloud")
+	dnsCredential := flags.String("dns-credential", "", "credential reference for DNS-01")
+	cloudCredential := flags.String("credential", "", "credential reference for cloud discovery and deployment")
+	configPath := flags.String("config", "config.json", "configuration file to preview or update")
+	directoryURL := flags.String("directory-url", "https://acme-v02.api.letsencrypt.org/directory", "ACME directory URL")
+	execute := flags.Bool("execute", false, "write the enrollment to the configuration file")
+	if err := flags.Parse(args[1:]); err != nil {
+		return 2
+	}
+	*provider = strings.ToLower(strings.TrimSpace(*provider))
+	if *provider == "" || strings.TrimSpace(*domain) == "" || strings.TrimSpace(*email) == "" || strings.TrimSpace(*dnsProvider) == "" || strings.TrimSpace(*dnsCredential) == "" {
+		fmt.Fprintln(stderr, "enroll cloud: --provider, --domain, --email, --dns-provider, and --dns-credential are required")
+		return 2
+	}
+	if *cloudCredential == "" {
+		*cloudCredential = defaultCloudCredential(*provider)
+	}
+	if *cloudCredential == "" {
+		fmt.Fprintf(stderr, "enroll cloud: unsupported provider %q\n", *provider)
+		return 2
+	}
+	scanner, err := newCloudScanner(*provider, credential.Resolver{}, *cloudCredential)
+	if err != nil {
+		fmt.Fprintf(stderr, "enroll cloud: %v\n", err)
+		return 2
+	}
+	domains, err := (discovery.Manager{Scanners: map[string]discovery.Scanner{*provider: scanner}}).Scan(context.Background(), *provider)
+	if err != nil {
+		fmt.Fprintf(stderr, "enroll cloud: %v\n", err)
+		return 1
+	}
+
+	existing, err := config.Load(*configPath)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			fmt.Fprintf(stderr, "enroll cloud: %v\n", err)
+			return 1
+		}
+		existing = config.Config{}
+	}
+	next, selected, err := enrollment.Build(existing, domains, enrollment.Request{
+		Provider: *provider, Domain: *domain, Name: *name, Email: *email,
+		DNSProvider: *dnsProvider, DNSCredential: *dnsCredential, CloudCredential: *cloudCredential,
+		DirectoryURL: *directoryURL,
+	})
+	if err != nil {
+		fmt.Fprintf(stderr, "enroll cloud: %v\n", err)
+		return 1
+	}
+	certificate := next.Certificates[len(next.Certificates)-1]
+	fmt.Fprintln(stdout, "TLSFerry enrollment plan")
+	fmt.Fprintf(stdout, "  cloud inventory: %s (%s, HTTPS=%t)\n", selected.Name, selected.Status, selected.HTTPS)
+	fmt.Fprintf(stdout, "  certificate:     %s\n", certificate.Name)
+	fmt.Fprintf(stdout, "  domain:          %s\n", certificate.Domains[0])
+	fmt.Fprintf(stdout, "  issue:           ACME DNS-01 via %s\n", certificate.Issuer.DNSProvider)
+	fmt.Fprintf(stdout, "  deploy:          %s -> %s\n", certificate.Deployments[0].Provider, certificate.Deployments[0].Target)
+	fmt.Fprintf(stdout, "  config:          %s\n", *configPath)
+	if !*execute {
+		fmt.Fprintln(stdout, "No changes made. Re-run with --execute to enroll this domain.")
+		return 0
+	}
+	if err := config.Save(*configPath, next); err != nil {
+		fmt.Fprintf(stderr, "enroll cloud: save config: %v\n", err)
+		return 1
+	}
+	fmt.Fprintln(stdout, "Domain enrolled. Run tlsferry preflight before issuing a certificate.")
+	return 0
+}
+
+func defaultCloudCredential(provider string) string {
+	return map[string]string{
+		"tencent": "keychain:TENCENTCLOUD",
+		"aliyun":  "keychain:ALIYUN",
+		"qiniu":   "keychain:QINIU",
+	}[provider]
+}
 
 func runDiscover(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 || args[0] != "cloud" {
@@ -111,12 +203,7 @@ func runDiscover(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 	if *reference == "" {
-		profiles := map[string]string{
-			"tencent": "keychain:TENCENTCLOUD",
-			"aliyun":  "keychain:ALIYUN",
-			"qiniu":   "keychain:QINIU",
-		}
-		*reference = profiles[*provider]
+		*reference = defaultCloudCredential(*provider)
 	}
 	if *reference == "" {
 		fmt.Fprintf(stderr, "discover cloud: unsupported provider %q\n", *provider)
@@ -718,6 +805,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  tlsferry service install --config config.json --accept-tos --execute")
 	fmt.Fprintln(w, "  tlsferry service status|run-now|logs|uninstall")
 	fmt.Fprintln(w, "  tlsferry discover cloud --provider tencent|aliyun|qiniu")
+	fmt.Fprintln(w, "  tlsferry enroll cloud --provider PROVIDER --domain DOMAIN [options] [--execute]")
 	fmt.Fprintln(w, "  tlsferry completion zsh|bash|fish")
 	fmt.Fprintln(w, "  tlsferry help COMMAND")
 	fmt.Fprintln(w, "  tlsferry version")

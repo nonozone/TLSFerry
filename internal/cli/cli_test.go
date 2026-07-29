@@ -2,11 +2,14 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/nonozone/TLSFerry/internal/config"
 	"github.com/nonozone/TLSFerry/internal/credential"
+	"github.com/nonozone/TLSFerry/internal/discovery"
 )
 
 func TestIssueRequiresCertificateName(t *testing.T) {
@@ -120,6 +123,42 @@ func TestDiscoverCloudRequiresProvider(t *testing.T) {
 	}
 }
 
+func TestEnrollCloudPreviewsThenWritesSelectedDomain(t *testing.T) {
+	originalScanner := newCloudScanner
+	newCloudScanner = func(provider string, _ credential.Resolver, _ string) (discovery.Scanner, error) {
+		return fakeCloudScanner{domains: []discovery.Domain{{Provider: provider, Name: "nos.example.com", Status: "online"}}}, nil
+	}
+	t.Cleanup(func() { newCloudScanner = originalScanner })
+
+	configPath := t.TempDir() + "/config.json"
+	args := []string{
+		"enroll", "cloud", "--provider", "tencent", "--domain", "nos.example.com",
+		"--email", "ops@example.com", "--dns-provider", "cloudflare",
+		"--dns-credential", "keychain:CLOUDFLARE", "--config", configPath,
+	}
+	var stdout, stderr strings.Builder
+	if code := Run(args, &stdout, &stderr); code != 0 || !strings.Contains(stdout.String(), "No changes made") {
+		t.Fatalf("preview code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+	if _, err := os.Stat(configPath); !os.IsNotExist(err) {
+		t.Fatalf("preview created config: %v", err)
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	args = append(args, "--execute")
+	if code := Run(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("execute code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Certificates) != 1 || cfg.Certificates[0].Domains[0] != "nos.example.com" || cfg.Certificates[0].Deployments[0].Provider != "tencent-cdn" {
+		t.Fatalf("saved config = %#v", cfg)
+	}
+}
+
 func TestUnknownCommandSuggestsClosestCommand(t *testing.T) {
 	var stdout, stderr strings.Builder
 	code := Run([]string{"discovr"}, &stdout, &stderr)
@@ -145,7 +184,7 @@ func TestCompletionScriptsContainCommandsAndProviderValues(t *testing.T) {
 		if code != 0 {
 			t.Fatalf("completion %s code = %d, stderr = %q", shell, code, stderr.String())
 		}
-		for _, expected := range []string{"discover", "tencent", "aliyun", "qiniu", "cloudflare"} {
+		for _, expected := range []string{"discover", "enroll", "tencent", "aliyun", "qiniu", "cloudflare"} {
 			if !strings.Contains(stdout.String(), expected) {
 				t.Fatalf("completion %s omitted %q", shell, expected)
 			}
@@ -182,6 +221,14 @@ func TestCompletionActivationIsIdempotent(t *testing.T) {
 type fakeCredentialStore struct {
 	profile string
 	values  map[string]string
+}
+
+type fakeCloudScanner struct {
+	domains []discovery.Domain
+}
+
+func (s fakeCloudScanner) Scan(context.Context) ([]discovery.Domain, error) {
+	return s.domains, nil
 }
 
 func (s *fakeCredentialStore) Get(string) (map[string]string, error) { return s.values, nil }

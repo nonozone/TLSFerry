@@ -4,14 +4,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/url"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"time"
 )
 
 var certificateNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+var domainLabelPattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$`)
 
 type Config struct {
 	RenewBefore  string        `json:"renew_before"`
@@ -54,10 +58,78 @@ func Load(path string) (Config, error) {
 	if err := decoder.Decode(&cfg); err != nil {
 		return Config{}, fmt.Errorf("decode %s: %w", path, err)
 	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		if err == nil {
+			err = errors.New("multiple JSON values")
+		}
+		return Config{}, fmt.Errorf("decode %s: trailing content: %w", path, err)
+	}
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
 	}
 	return cfg, nil
+}
+
+func Save(path string, cfg Config) error {
+	if err := cfg.Validate(); err != nil {
+		return err
+	}
+	encoded, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode %s: %w", path, err)
+	}
+	encoded = append(encoded, '\n')
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return fmt.Errorf("create config directory: %w", err)
+	}
+	temporary, err := os.CreateTemp(dir, ".tlsferry-config-*")
+	if err != nil {
+		return fmt.Errorf("create temporary config: %w", err)
+	}
+	temporaryPath := temporary.Name()
+	defer os.Remove(temporaryPath)
+	if err := temporary.Chmod(0o600); err != nil {
+		temporary.Close()
+		return err
+	}
+	if _, err := temporary.Write(encoded); err != nil {
+		temporary.Close()
+		return err
+	}
+	if err := temporary.Sync(); err != nil {
+		temporary.Close()
+		return err
+	}
+	if err := temporary.Close(); err != nil {
+		return err
+	}
+	if err := os.Rename(temporaryPath, path); err != nil {
+		return fmt.Errorf("replace config: %w", err)
+	}
+	return nil
+}
+
+func NormalizeDomain(value string) (string, error) {
+	domain := strings.ToLower(strings.TrimSpace(value))
+	domain = strings.TrimSuffix(domain, ".")
+	if domain == "" || len(domain) > 253 || net.ParseIP(domain) != nil {
+		return "", fmt.Errorf("invalid domain %q", value)
+	}
+	if strings.HasPrefix(domain, "*.") {
+		domain = strings.TrimPrefix(domain, "*.")
+		if domain == "" {
+			return "", fmt.Errorf("invalid domain %q", value)
+		}
+	}
+	for _, label := range strings.Split(domain, ".") {
+		if !domainLabelPattern.MatchString(label) {
+			return "", fmt.Errorf("invalid domain %q", value)
+		}
+	}
+	normalized := strings.ToLower(strings.TrimSpace(value))
+	normalized = strings.TrimSuffix(normalized, ".")
+	return normalized, nil
 }
 
 func (c Config) Validate() error {
@@ -96,10 +168,10 @@ func (c Certificate) validate() error {
 		return errors.New("at least one domain is required")
 	}
 	domains := make(map[string]struct{}, len(c.Domains))
-	for _, domain := range c.Domains {
-		domain = strings.ToLower(strings.TrimSpace(domain))
-		if domain == "" {
-			return errors.New("domains cannot contain an empty value")
+	for _, value := range c.Domains {
+		domain, err := NormalizeDomain(value)
+		if err != nil {
+			return err
 		}
 		if _, exists := domains[domain]; exists {
 			return fmt.Errorf("duplicate domain %q", domain)
