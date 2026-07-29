@@ -3,6 +3,8 @@ package cli
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -15,6 +17,7 @@ import (
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/nonozone/TLSFerry/internal/acmeissuer"
 	"github.com/nonozone/TLSFerry/internal/certstore"
@@ -70,6 +73,8 @@ func RunWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return runDeploy(args[1:], stdout, stderr)
 	case "renew":
 		return runRenew(args[1:], stdout, stderr)
+	case "release-smoke":
+		return runReleaseSmoke(args[1:], stdout, stderr)
 	case "auth":
 		return runAuth(args[1:], stdin, stdout, stderr)
 	case "service":
@@ -92,6 +97,198 @@ func RunWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		printUsage(stderr)
 		return 2
 	}
+}
+
+const letsEncryptStagingDirectory = "https://acme-staging-v02.api.letsencrypt.org/directory"
+
+var releaseSmokePreflight = runPreflight
+var releaseSmokeIssue = runIssue
+var releaseSmokeDeploy = runDeploy
+var releaseSmokeLoadBundle = func(root, name string) (certstore.Bundle, error) {
+	return (certstore.Store{Root: root}).Load(name)
+}
+var releaseSmokeNow = time.Now
+
+type releaseSmokeEvidence struct {
+	SchemaVersion int       `json:"schema_version"`
+	GeneratedAt   time.Time `json:"generated_at"`
+	GateStatus    string    `json:"gate_status"`
+	Config        string    `json:"config"`
+	Certificate   struct {
+		Name           string    `json:"name"`
+		Domains        []string  `json:"domains"`
+		IssuedAt       time.Time `json:"issued_at"`
+		PublicSHA256   string    `json:"public_certificate_sha256"`
+		IssuanceStatus string    `json:"issuance_status"`
+	} `json:"certificate"`
+	ACME struct {
+		DirectoryURL string `json:"directory_url"`
+		DNSProvider  string `json:"dns_provider"`
+	} `json:"acme"`
+	Deployment struct {
+		Provider  string `json:"provider"`
+		Target    string `json:"target"`
+		Status    string `json:"status"`
+		Reference string `json:"reference"`
+	} `json:"deployment"`
+	Cleanup struct {
+		Status       string `json:"status"`
+		Instructions string `json:"instructions"`
+	} `json:"cleanup"`
+}
+
+func runReleaseSmoke(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("release-smoke", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	configPath := flags.String("config", "config.json", "path to an isolated release-smoke configuration")
+	certificateName := flags.String("certificate", "", "certificate name to issue")
+	providerName := flags.String("provider", "", "configured deployment provider to test")
+	confirmedTarget := flags.String("confirm-test-target", "", "exact non-production target authorized for deployment")
+	stateDir := flags.String("state-dir", ".tlsferry/release-smoke/state", "isolated ACME account state directory")
+	outputDir := flags.String("output-dir", ".tlsferry/release-smoke/certificates", "isolated certificate output directory")
+	evidencePath := flags.String("evidence", ".tlsferry/release-smoke/evidence.json", "sanitized JSON evidence output")
+	acceptTerms := flags.Bool("accept-tos", false, "accept the ACME staging provider terms of service")
+	execute := flags.Bool("execute", false, "perform staging DNS-01 issuance and the configured cloud deployment")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if strings.TrimSpace(*certificateName) == "" || strings.TrimSpace(*providerName) == "" {
+		fmt.Fprintln(stderr, "release-smoke: --certificate and --provider are required")
+		return 2
+	}
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "release-smoke failed: %v\n", err)
+		return 1
+	}
+	certificateConfig, ok := findCertificate(cfg, *certificateName)
+	if !ok {
+		fmt.Fprintf(stderr, "release-smoke failed: certificate %q was not found\n", *certificateName)
+		return 1
+	}
+	if certificateConfig.Issuer.DirectoryURL != letsEncryptStagingDirectory {
+		fmt.Fprintf(stderr, "release-smoke refused: issuer.directory_url must be %s; production ACME is not allowed\n", letsEncryptStagingDirectory)
+		return 2
+	}
+	deploymentConfig, ok := findDeployment(certificateConfig, *providerName)
+	if !ok {
+		fmt.Fprintf(stderr, "release-smoke failed: provider %q is not configured for certificate %q\n", *providerName, *certificateName)
+		return 1
+	}
+	if err := (&x509.Certificate{DNSNames: certificateConfig.Domains}).VerifyHostname(deploymentConfig.Target); err != nil {
+		fmt.Fprintf(stderr, "release-smoke refused: certificate domains do not cover deployment target %q\n", deploymentConfig.Target)
+		return 2
+	}
+
+	fmt.Fprintln(stdout, "TLSFerry real-environment release smoke")
+	fmt.Fprintf(stdout, "  certificate: %s\n", certificateConfig.Name)
+	fmt.Fprintf(stdout, "  domains:     %s\n", strings.Join(certificateConfig.Domains, ", "))
+	fmt.Fprintf(stdout, "  ACME:        Let's Encrypt staging via %s\n", certificateConfig.Issuer.DNSProvider)
+	fmt.Fprintf(stdout, "  deployment:  %s -> %s\n", deploymentConfig.Provider, deploymentConfig.Target)
+	fmt.Fprintf(stdout, "  evidence:    %s\n", *evidencePath)
+	if !*execute {
+		fmt.Fprintf(stdout, "No external operations performed. Execute only against a disposable target with --confirm-test-target %s --accept-tos --execute.\n", deploymentConfig.Target)
+		return 0
+	}
+	if !*acceptTerms {
+		fmt.Fprintln(stderr, "release-smoke: --accept-tos is required with --execute")
+		return 2
+	}
+	if *confirmedTarget != deploymentConfig.Target {
+		fmt.Fprintf(stderr, "release-smoke refused: --confirm-test-target must exactly equal configured target %q\n", deploymentConfig.Target)
+		return 2
+	}
+	if strings.TrimSpace(*evidencePath) == "" || filepath.Clean(*evidencePath) == filepath.Clean(*configPath) {
+		fmt.Fprintln(stderr, "release-smoke refused: --evidence must be non-empty and different from --config")
+		return 2
+	}
+	if code := releaseSmokePreflight([]string{"--config", *configPath}, stdout, stderr); code != 0 {
+		fmt.Fprintln(stderr, "release-smoke stopped before external operations because preflight failed")
+		return code
+	}
+	if code := releaseSmokeIssue([]string{"--config", *configPath, "--certificate", *certificateName, "--state-dir", *stateDir, "--output-dir", *outputDir, "--accept-tos"}, stdout, stderr); code != 0 {
+		fmt.Fprintln(stderr, "release-smoke stopped before cloud deployment because staging issuance failed")
+		return code
+	}
+	var deploymentOutput strings.Builder
+	if code := releaseSmokeDeploy([]string{"--config", *configPath, "--certificate", *certificateName, "--provider", *providerName, "--input-dir", *outputDir, "--execute"}, io.MultiWriter(stdout, &deploymentOutput), stderr); code != 0 {
+		fmt.Fprintln(stderr, "release-smoke failed after issuance; inspect the isolated certificate directory and do not mark the provider deployment as passed")
+		return code
+	}
+	reference := releaseSmokeDeploymentReference(deploymentOutput.String())
+	if reference == "" {
+		fmt.Fprintln(stderr, "release-smoke failed: deployment succeeded but returned no provider reference")
+		return 1
+	}
+	bundle, err := releaseSmokeLoadBundle(*outputDir, certificateConfig.Name)
+	if err != nil {
+		fmt.Fprintf(stderr, "release-smoke failed while loading issued certificate metadata: %v\n", err)
+		return 1
+	}
+	evidence := newReleaseSmokeEvidence(*configPath, certificateConfig, deploymentConfig, bundle, reference)
+	if err := writeReleaseSmokeEvidence(*evidencePath, evidence); err != nil {
+		fmt.Fprintf(stderr, "release-smoke deployment succeeded but evidence could not be saved: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "Sanitized evidence saved to %s. Gate remains pending until rollback/removal is performed and recorded.\n", *evidencePath)
+	return 0
+}
+
+func releaseSmokeDeploymentReference(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		if value, ok := strings.CutPrefix(strings.TrimSpace(line), "reference:"); ok {
+			return strings.TrimSpace(value)
+		}
+	}
+	return ""
+}
+
+func newReleaseSmokeEvidence(configPath string, certificate config.Certificate, deploymentConfig config.Deployment, bundle certstore.Bundle, reference string) releaseSmokeEvidence {
+	evidence := releaseSmokeEvidence{SchemaVersion: 1, GeneratedAt: releaseSmokeNow().UTC(), GateStatus: "pending_cleanup", Config: filepath.Base(filepath.Clean(configPath))}
+	evidence.Certificate.Name = certificate.Name
+	evidence.Certificate.Domains = append([]string(nil), bundle.Domains...)
+	evidence.Certificate.IssuedAt = bundle.IssuedAt.UTC()
+	evidence.Certificate.PublicSHA256 = fmt.Sprintf("%x", sha256.Sum256(bundle.Certificate))
+	evidence.Certificate.IssuanceStatus = "pass"
+	evidence.ACME.DirectoryURL = certificate.Issuer.DirectoryURL
+	evidence.ACME.DNSProvider = certificate.Issuer.DNSProvider
+	evidence.Deployment.Provider = deploymentConfig.Provider
+	evidence.Deployment.Target = deploymentConfig.Target
+	evidence.Deployment.Status = "command_succeeded"
+	evidence.Deployment.Reference = reference
+	evidence.Cleanup.Status = "pending"
+	evidence.Cleanup.Instructions = "Restore the previous certificate binding and remove the uploaded test certificate in the provider control plane, then record the sanitized result in docs/release-evidence.md."
+	return evidence
+}
+
+func writeReleaseSmokeEvidence(path string, evidence releaseSmokeEvidence) error {
+	encoded, err := json.MarshalIndent(evidence, "", "  ")
+	if err != nil {
+		return err
+	}
+	encoded = append(encoded, '\n')
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	temporary, err := os.CreateTemp(dir, ".tlsferry-release-smoke-*")
+	if err != nil {
+		return err
+	}
+	temporaryPath := temporary.Name()
+	defer os.Remove(temporaryPath)
+	if err := temporary.Chmod(0o600); err != nil {
+		temporary.Close()
+		return err
+	}
+	if _, err := temporary.Write(encoded); err != nil {
+		temporary.Close()
+		return err
+	}
+	if err := temporary.Close(); err != nil {
+		return err
+	}
+	return os.Rename(temporaryPath, path)
 }
 
 var newCloudScanner = discovery.NewScanner
@@ -819,6 +1016,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  tlsferry issue --config config.json --certificate NAME --accept-tos")
 	fmt.Fprintln(w, "  tlsferry deploy --config config.json --certificate NAME --provider PROVIDER --execute")
 	fmt.Fprintln(w, "  tlsferry renew --config config.json --accept-tos --execute")
+	fmt.Fprintln(w, "  tlsferry release-smoke --config config.json --certificate NAME --provider PROVIDER")
 	fmt.Fprintln(w, "  tlsferry auth login cloudflare|tencent|aliyun|qiniu")
 	fmt.Fprintln(w, "  tlsferry auth status --profile PROFILE")
 	fmt.Fprintln(w, "  tlsferry service install --config config.json --accept-tos --execute")

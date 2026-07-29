@@ -155,7 +155,7 @@ const zshCompletion = `#compdef tlsferry
 
 _tlsferry() {
   local -a commands auth_providers cloud_providers
-  commands=(auth completion deploy discover enroll help issue plan preflight renew service validate version)
+  commands=(auth completion deploy discover enroll help issue plan preflight release-smoke renew service validate version)
   auth_providers=(cloudflare tencent aliyun qiniu)
   cloud_providers=(tencent aliyun qiniu)
   if (( CURRENT == 2 )); then
@@ -184,8 +184,8 @@ _tlsferry() {
       if (( CURRENT == 3 )); then _values 'action' install status run-now logs uninstall; return; fi
       _arguments '--config[configuration file]:file:_files' '--hour[daily hour]:hour' '--minute[daily minute]:minute' '--accept-tos[accept ACME terms]' '--execute[allow external operations]'
       ;;
-    issue|deploy|renew|validate|plan|preflight)
-      _arguments '--config[configuration file]:file:_files' '--certificate[certificate name]:name' '--provider[deployment provider]:provider:(tencent-cdn tencent-cos aliyun-cdn qiniu-cdn)' '--state-dir[state directory]:directory:_directories' '--output-dir[certificate output directory]:directory:_directories' '--input-dir[certificate input directory]:directory:_directories' '--accept-tos[accept ACME terms]' '--execute[allow external operations]' '--force[force renewal]'
+    issue|deploy|release-smoke|renew|validate|plan|preflight)
+      _arguments '--config[configuration file]:file:_files' '--certificate[certificate name]:name' '--provider[deployment provider]:provider:(tencent-cdn tencent-cos aliyun-cdn qiniu-cdn)' '--confirm-test-target[exact non-production deployment target]:domain' '--state-dir[state directory]:directory:_directories' '--output-dir[certificate output directory]:directory:_directories' '--input-dir[certificate input directory]:directory:_directories' '--evidence[sanitized evidence file]:file:_files' '--accept-tos[accept ACME terms]' '--execute[allow external operations]' '--force[force renewal]'
       ;;
   esac
 }
@@ -199,7 +199,7 @@ const bashCompletion = `_tlsferry_completion() {
   prev="${COMP_WORDS[COMP_CWORD-1]}"
   command="${COMP_WORDS[1]}"
   action="${COMP_WORDS[2]}"
-  local commands="auth completion deploy discover enroll help issue plan preflight renew service validate version"
+  local commands="auth completion deploy discover enroll help issue plan preflight release-smoke renew service validate version"
   local auth_providers="cloudflare tencent aliyun qiniu"
   local cloud_providers="tencent aliyun qiniu"
   if [[ $COMP_CWORD -eq 1 ]]; then COMPREPLY=( $(compgen -W "$commands" -- "$cur") ); return; fi
@@ -207,7 +207,7 @@ const bashCompletion = `_tlsferry_completion() {
     --provider) COMPREPLY=( $(compgen -W "$cloud_providers tencent-cdn tencent-cos aliyun-cdn qiniu-cdn" -- "$cur") ); return ;;
     --format) COMPREPLY=( $(compgen -W "table json" -- "$cur") ); return ;;
 	--shell) COMPREPLY=( $(compgen -W "zsh bash fish" -- "$cur") ); return ;;
-    --config|--state-dir|--output-dir|--input-dir) COMPREPLY=( $(compgen -f -- "$cur") ); return ;;
+    --config|--state-dir|--output-dir|--input-dir|--evidence) COMPREPLY=( $(compgen -f -- "$cur") ); return ;;
   esac
   case "$command" in
     auth)
@@ -218,14 +218,14 @@ const bashCompletion = `_tlsferry_completion() {
     enroll) COMPREPLY=( $(compgen -W "cloud --provider --domain --name --email --dns-provider --dns-credential --credential --config --directory-url --execute" -- "$cur") ) ;;
     completion) COMPREPLY=( $(compgen -W "zsh bash fish install --shell" -- "$cur") ) ;;
     service) COMPREPLY=( $(compgen -W "install status run-now logs uninstall --config --hour --minute --accept-tos --execute" -- "$cur") ) ;;
-    issue|deploy|renew|validate|plan|preflight) COMPREPLY=( $(compgen -W "--config --certificate --provider --state-dir --output-dir --input-dir --accept-tos --execute --force" -- "$cur") ) ;;
+    issue|deploy|release-smoke|renew|validate|plan|preflight) COMPREPLY=( $(compgen -W "--config --certificate --provider --confirm-test-target --state-dir --output-dir --input-dir --evidence --accept-tos --execute --force" -- "$cur") ) ;;
   esac
 }
 complete -F _tlsferry_completion tlsferry
 `
 
 const fishCompletion = `complete -c tlsferry -f
-complete -c tlsferry -n '__fish_use_subcommand' -a 'auth completion deploy discover enroll help issue plan preflight renew service validate version'
+complete -c tlsferry -n '__fish_use_subcommand' -a 'auth completion deploy discover enroll help issue plan preflight release-smoke renew service validate version'
 complete -c tlsferry -n '__fish_seen_subcommand_from auth' -a 'login status logout'
 complete -c tlsferry -n '__fish_seen_subcommand_from login' -a 'cloudflare tencent aliyun qiniu'
 complete -c tlsferry -n '__fish_seen_subcommand_from discover' -a 'cloud'
@@ -240,11 +240,16 @@ complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l name -r
 complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l email -r
 complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l dns-credential -r
 complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l directory-url -r
+complete -c tlsferry -n '__fish_seen_subcommand_from release-smoke' -l provider -a 'tencent-cdn tencent-cos aliyun-cdn qiniu-cdn'
+complete -c tlsferry -n '__fish_seen_subcommand_from release-smoke' -l state-dir -r
+complete -c tlsferry -n '__fish_seen_subcommand_from release-smoke' -l output-dir -r
 complete -c tlsferry -n '__fish_seen_subcommand_from completion' -a 'zsh bash fish install'
 complete -c tlsferry -n '__fish_seen_subcommand_from completion' -l shell -a 'zsh bash fish'
 complete -c tlsferry -n '__fish_seen_subcommand_from service' -a 'install status run-now logs uninstall'
 complete -c tlsferry -l config -r
 complete -c tlsferry -l certificate -r
+complete -c tlsferry -l confirm-test-target -r
+complete -c tlsferry -l evidence -r
 complete -c tlsferry -l profile -r
 complete -c tlsferry -l accept-tos
 complete -c tlsferry -l execute

@@ -3,14 +3,119 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/nonozone/TLSFerry/internal/certstore"
 	"github.com/nonozone/TLSFerry/internal/config"
 	"github.com/nonozone/TLSFerry/internal/credential"
 	"github.com/nonozone/TLSFerry/internal/discovery"
 )
+
+func TestReleaseSmokeRefusesProductionACME(t *testing.T) {
+	configPath := saveReleaseSmokeConfig(t, "https://acme-v02.api.letsencrypt.org/directory")
+	var stdout, stderr strings.Builder
+	code := Run([]string{"release-smoke", "--config", configPath, "--certificate", "staging", "--provider", "tencent-cdn"}, &stdout, &stderr)
+	if code != 2 || !strings.Contains(stderr.String(), "production ACME is not allowed") {
+		t.Fatalf("Run() code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+}
+
+func TestReleaseSmokePreviewMakesNoExternalCalls(t *testing.T) {
+	configPath := saveReleaseSmokeConfig(t, letsEncryptStagingDirectory)
+	called := false
+	originalIssue := releaseSmokeIssue
+	releaseSmokeIssue = func([]string, io.Writer, io.Writer) int { called = true; return 0 }
+	t.Cleanup(func() { releaseSmokeIssue = originalIssue })
+	var stdout, stderr strings.Builder
+	code := Run([]string{"release-smoke", "--config", configPath, "--certificate", "staging", "--provider", "tencent-cdn"}, &stdout, &stderr)
+	if code != 0 || called || !strings.Contains(stdout.String(), "No external operations performed") {
+		t.Fatalf("Run() code = %d, called = %t, stdout = %q, stderr = %q", code, called, stdout.String(), stderr.String())
+	}
+}
+
+func TestReleaseSmokeRequiresCoveredAndExactlyConfirmedTarget(t *testing.T) {
+	configPath := saveReleaseSmokeConfig(t, letsEncryptStagingDirectory)
+	var stdout, stderr strings.Builder
+	code := Run([]string{"release-smoke", "--config", configPath, "--certificate", "staging", "--provider", "tencent-cdn", "--confirm-test-target", "wrong.example.com", "--accept-tos", "--execute"}, &stdout, &stderr)
+	if code != 2 || !strings.Contains(stderr.String(), "must exactly equal configured target") {
+		t.Fatalf("confirmation code = %d, stderr = %q", code, stderr.String())
+	}
+
+	mismatchedPath := filepath.Join(t.TempDir(), "config.json")
+	err := config.Save(mismatchedPath, config.Config{RenewBefore: "720h", Certificates: []config.Certificate{{
+		Name: "staging", Domains: []string{"other.example.com"},
+		Issuer:      config.Issuer{Type: "acme", Email: "ops@example.com", DirectoryURL: letsEncryptStagingDirectory, Challenge: "dns-01", DNSProvider: "cloudflare", Credential: "env:CLOUDFLARE"},
+		Deployments: []config.Deployment{{Provider: "tencent-cdn", Target: "staging.example.com", Credential: "env:TENCENTCLOUD"}},
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stdout.Reset()
+	stderr.Reset()
+	code = Run([]string{"release-smoke", "--config", mismatchedPath, "--certificate", "staging", "--provider", "tencent-cdn"}, &stdout, &stderr)
+	if code != 2 || !strings.Contains(stderr.String(), "domains do not cover deployment target") {
+		t.Fatalf("coverage code = %d, stderr = %q", code, stderr.String())
+	}
+}
+
+func TestReleaseSmokeExecutesExistingPathsAndWritesSanitizedPendingEvidence(t *testing.T) {
+	configPath := saveReleaseSmokeConfig(t, letsEncryptStagingDirectory)
+	evidencePath := filepath.Join(t.TempDir(), "evidence.json")
+	originalPreflight, originalIssue, originalDeploy := releaseSmokePreflight, releaseSmokeIssue, releaseSmokeDeploy
+	originalLoad, originalNow := releaseSmokeLoadBundle, releaseSmokeNow
+	releaseSmokePreflight = func([]string, io.Writer, io.Writer) int { return 0 }
+	releaseSmokeIssue = func([]string, io.Writer, io.Writer) int { return 0 }
+	releaseSmokeDeploy = func(_ []string, stdout, _ io.Writer) int {
+		fmt.Fprintln(stdout, "deployment submitted: tencent-cdn -> staging.example.com")
+		fmt.Fprintln(stdout, "  reference: request-42")
+		return 0
+	}
+	releaseSmokeLoadBundle = func(string, string) (certstore.Bundle, error) {
+		return certstore.Bundle{Domains: []string{"staging.example.com"}, Certificate: []byte("public-certificate"), PrivateKey: []byte("never-write-this-secret"), IssuedAt: time.Date(2026, time.July, 29, 10, 0, 0, 0, time.UTC)}, nil
+	}
+	releaseSmokeNow = func() time.Time { return time.Date(2026, time.July, 29, 10, 1, 0, 0, time.UTC) }
+	t.Cleanup(func() {
+		releaseSmokePreflight, releaseSmokeIssue, releaseSmokeDeploy = originalPreflight, originalIssue, originalDeploy
+		releaseSmokeLoadBundle, releaseSmokeNow = originalLoad, originalNow
+	})
+	var stdout, stderr strings.Builder
+	code := Run([]string{"release-smoke", "--config", configPath, "--certificate", "staging", "--provider", "tencent-cdn", "--confirm-test-target", "staging.example.com", "--accept-tos", "--execute", "--evidence", evidencePath}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("Run() code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+	data, err := os.ReadFile(evidencePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "never-write-this-secret") || !strings.Contains(string(data), `"gate_status": "pending_cleanup"`) || !strings.Contains(string(data), `"reference": "request-42"`) {
+		t.Fatalf("evidence = %s", data)
+	}
+	var evidence releaseSmokeEvidence
+	if err := json.Unmarshal(data, &evidence); err != nil || evidence.Certificate.PublicSHA256 == "" {
+		t.Fatalf("decode evidence: %v, value = %#v", err, evidence)
+	}
+}
+
+func saveReleaseSmokeConfig(t *testing.T, directoryURL string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "config.json")
+	err := config.Save(path, config.Config{RenewBefore: "720h", Certificates: []config.Certificate{{
+		Name: "staging", Domains: []string{"staging.example.com"},
+		Issuer:      config.Issuer{Type: "acme", Email: "ops@example.com", DirectoryURL: directoryURL, Challenge: "dns-01", DNSProvider: "cloudflare", Credential: "env:CLOUDFLARE"},
+		Deployments: []config.Deployment{{Provider: "tencent-cdn", Target: "staging.example.com", Credential: "env:TENCENTCLOUD"}},
+	}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
 
 func TestIssueRequiresCertificateName(t *testing.T) {
 	var stdout, stderr strings.Builder

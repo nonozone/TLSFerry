@@ -53,8 +53,8 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 | Functional smoke | Status | Evidence required |
 | --- | --- | --- |
 | Credential-free CLI flow | Pass | See the evidence below for the exact commit, local release gate, three native CI jobs, no-network isolation, read-only assertions, selected-domain-only enrollment, and credential-output checks. |
-| Let's Encrypt staging DNS-01 issuance | Pending | Dedicated test hostname, staging directory, sanitized command result, certificate metadata, and confirmation that no secret or challenge value entered logs. |
-| Non-production provider deployment | Pending | Least-privilege test credential, target resource, sanitized provider request id, and rollback/removal result. |
+| Let's Encrypt staging DNS-01 issuance | Pending | Run `tlsferry release-smoke` for a dedicated test hostname; retain its sanitized evidence containing the staging directory, certificate metadata, and public-certificate SHA-256, and confirm no secret or challenge value entered logs. |
+| Non-production provider deployment | Pending | The same `release-smoke` evidence must identify the least-privilege test target and sanitized provider reference. Its `pending_cleanup` state remains a blocker until the previous binding is restored and rollback/removal is recorded here. |
 
 ### Credential-free CLI functional evidence
 

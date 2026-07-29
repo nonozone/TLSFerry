@@ -40,6 +40,7 @@ go run ./cmd/tlsferry preflight --config config.example.json
 go run ./cmd/tlsferry issue --config config.example.json --certificate assets-example --accept-tos
 go run ./cmd/tlsferry deploy --config config.example.json --certificate assets-example --provider tencent-cdn --execute
 go run ./cmd/tlsferry renew --config config.example.json --accept-tos --execute
+go run ./cmd/tlsferry release-smoke --config staging-config.json --certificate staging-cdn --provider tencent-cdn
 go run ./cmd/tlsferry auth login cloudflare
 go run ./cmd/tlsferry auth login tencent
 go run ./cmd/tlsferry completion zsh
@@ -189,6 +190,33 @@ tlsferry auth login tencent
 If DNS is hosted by Cloudflare while CDN is hosted by Tencent Cloud, use separate credential references in the same certificate entry: `keychain:CLOUDFLARE` under `issuer` and `keychain:TENCENTCLOUD` under `deployments`.
 
 The `tlsferry-cloud` provider is the public executor-side contract for a hosted control plane. It uses a short-lived job token to present and clean one delegated ACME challenge without exposing the control plane's authoritative DNS credentials. The client is implemented in CE, but the hosted endpoint is not included or generally available. See [the remote DNS challenge protocol](docs/remote-dns-protocol.md).
+
+## Real-environment release smoke
+
+Before a CE release, validate one disposable hostname and one non-production cloud target with the guarded orchestration command. The configuration must use the exact Let's Encrypt staging directory; the command refuses the production directory. Its default mode only prints the selected DNS and cloud path:
+
+```bash
+tlsferry release-smoke \
+  --config staging-config.json \
+  --certificate staging-cdn \
+  --provider tencent-cdn
+```
+
+After reviewing the preview, explicitly type the configured test target:
+
+```bash
+tlsferry release-smoke \
+  --config staging-config.json \
+  --certificate staging-cdn \
+  --provider tencent-cdn \
+  --confirm-test-target staging.example.com \
+  --accept-tos \
+  --execute
+```
+
+This runs the existing `preflight`, `issue`, and single-target `deploy` paths and writes `.tlsferry/release-smoke/evidence.json` with certificate domains, issue time, public-certificate SHA-256, provider target, and provider request reference. It never writes credentials, challenge values, certificate PEM, or the private key to evidence. The evidence deliberately remains `pending_cleanup`: restore the previous cloud certificate binding and remove the uploaded test certificate, then record the sanitized rollback result in `docs/release-evidence.md`. TLSFerry does not guess or automate provider rollback because replacing a live binding is an externally consequential operation.
+
+Use an isolated test configuration, test hostname, state directory, and least-privilege credentials. A typed target confirmation is a guardrail, not proof that a hostname is non-production.
 
 ## Issuing a certificate
 

@@ -7,7 +7,7 @@ import (
 )
 
 var commandNames = []string{
-	"auth", "completion", "deploy", "discover", "enroll", "help", "issue", "plan", "preflight", "renew", "service", "validate", "version",
+	"auth", "completion", "deploy", "discover", "enroll", "help", "issue", "plan", "preflight", "release-smoke", "renew", "service", "validate", "version",
 }
 
 var commandHelp = map[string]string{
@@ -55,6 +55,11 @@ Checks configuration, provider support, and credential availability without chan
   tlsferry renew --config FILE [--certificate NAME] [--retry-attempts N] [--force] --accept-tos --execute
 
 Checks expiry, renews due certificates, and deploys them. Safety flags are mandatory.`,
+	"release-smoke": `Usage:
+  tlsferry release-smoke --config FILE --certificate NAME --provider PROVIDER [--state-dir DIR] [--output-dir DIR] [--evidence FILE]
+  tlsferry release-smoke --config FILE --certificate NAME --provider PROVIDER --confirm-test-target DOMAIN --accept-tos --execute
+
+Previews or runs the real CE release smoke against Let's Encrypt staging and one explicitly confirmed non-production cloud target. Production ACME directories are refused. Successful execution writes sanitized JSON evidence with a pending cleanup gate; provider rollback/removal remains mandatory.`,
 	"service": `Usage:
   tlsferry service install --config FILE [--hour HOUR] [--minute MINUTE] --accept-tos --execute
   tlsferry service status
