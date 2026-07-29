@@ -27,8 +27,8 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 | Environment | Install | Status | Run now | Logs/diagnostics | Uninstall | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | macOS launchd user agent | Pass | Pass | Pass | Pass | Pass | See the macOS evidence below for commit, OS, isolated commands, sanitized results, and cleanup. |
-| Linux systemd user timer | Pending | Pending | Pending | Pending | Pending | Include missed-run recovery and whether user linger was required. |
-| Windows Task Scheduler | Pending | Pending | Pending | Pending | Pending | Include interactive-user identity and last-result inspection. |
+| Linux systemd user timer | Pass | Pass | Pass | Pass | Pass | See the Linux evidence below, including a real `Persistent=true` missed-run recovery and linger cleanup. |
+| Windows Task Scheduler | Pass | Pass | Pass | Pass | Pass | See the Windows evidence below, including interactive least-privilege identity and last-result inspection. |
 
 | Functional smoke | Status | Evidence required |
 | --- | --- | --- |
@@ -46,6 +46,25 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 - Run now: `tlsferry service run-now` reported `renewal service started`. A second `launchctl print` retained PID `15269` and `runs = 1`, proving the active renewal was not killed or overlapped; the error log contained no renewal-lock conflict.
 - Diagnostics: `tlsferry service logs` returned the isolated standard-output and standard-error paths under `<test-home>/.tlsferry/logs/`.
 - Uninstall: `tlsferry service uninstall` succeeded. A final status reported `installed: false` and `running: false`; the plist was absent and `launchctl print gui/<uid>/com.nonozone.tlsferry` no longer found the service. The temporary test directory was removed.
+
+### Linux systemd user-timer evidence
+
+- Date and source: `2026-07-29`, commit `cb074c37f686760a0163e074b76cdbaeb1322dd4`, [CI run 30429574464](https://github.com/nonozone/TLSFerry/actions/runs/30429574464), [systemd job 90503439305](https://github.com/nonozone/TLSFerry/actions/runs/30429574464/job/90503439305).
+- Host: Ubuntu 24.04.4 LTS, kernel `6.17.0-1020-azure`, systemd `255.4-1ubuntu8.16` on the GitHub-hosted ephemeral runner.
+- Isolation: the job generated an ephemeral self-signed certificate valid for one year and loaded it through the production certificate store. The reserved `.invalid` hostname was outside the 24-hour renewal window, so both executions reported `renewal skipped`; no ACME, DNS, cloud credential, or provider call was made.
+- Install and status: `service install` created and enabled `tlsferry-renew.timer`; `service status` reported `installed: true` and `running: true`. The rendered timer contained `Persistent=true`.
+- Missed-run recovery and linger: the job enabled user linger and confirmed `Linger=yes`, activated the timer to establish its persistent timestamp, stopped it before the `06:53` schedule, crossed the missed boundary, and restarted it. systemd reported `LastTriggerUSec=2026-07-29 06:53:02 UTC`, `Result=success`, and `ExecMainStatus=0`.
+- Run now and diagnostics: `service run-now` completed with `Result=success` and `ExecMainStatus=0`; `service logs` returned `journalctl --user --unit tlsferry-renew.service`, whose sanitized output showed the expected skip result twice.
+- Uninstall: `service uninstall` removed both units and disabled the timer. Final status reported `installed: false` and `running: false`; temporary test data was removed and linger was returned to its original setting.
+
+### Windows Task Scheduler evidence
+
+- Date and source: `2026-07-29`, commit `cb074c37f686760a0163e074b76cdbaeb1322dd4`, [CI run 30429574464](https://github.com/nonozone/TLSFerry/actions/runs/30429574464), [Task Scheduler job 90503439351](https://github.com/nonozone/TLSFerry/actions/runs/30429574464/job/90503439351).
+- Host: Microsoft Windows NT `10.0.26100.0` with PowerShell `7.6.3` on the GitHub-hosted ephemeral runner.
+- Isolation: the job used the same generated non-due certificate and reserved `.invalid` hostname as the Linux smoke. No ACME, DNS, cloud credential, or provider call was made, and all task XML, state, certificate, and binary paths were temporary.
+- Install and status: `service install` successfully registered `TLSFerry Renewal`; status reported `installed: true` and `running: true`. Task Scheduler reported `State=Ready`, `LogonType=Interactive`, and `RunLevel=Limited`.
+- Run now and diagnostics: `service run-now` completed at `2026-07-29 06:53:27`; `Get-ScheduledTaskInfo` and the documented `schtasks.exe /Query /TN "TLSFerry Renewal" /V /FO LIST` command both reported last result `0`.
+- Uninstall: `service uninstall` removed the task and temporary XML. Final status reported `installed: false` and `running: false`; a native task lookup confirmed the task no longer existed, and temporary test data was removed.
 
 ## Publication boundary
 
