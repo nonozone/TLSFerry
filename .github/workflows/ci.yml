@@ -37,3 +37,28 @@ jobs:
         run: go test ./... -count=1
       - name: Build platform binary
         run: go build -trimpath ./cmd/tlsferry
+
+  scheduler-linux:
+    name: Smoke systemd user timer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Exercise real systemd lifecycle
+        run: .github/scripts/smoke-systemd.sh
+
+  scheduler-windows:
+    name: Smoke Windows Task Scheduler
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Exercise real Task Scheduler lifecycle
+        shell: pwsh
+        run: ./.github/scripts/smoke-windows.ps1
