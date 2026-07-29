@@ -33,8 +33,10 @@ export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
 loginctl show-user "$USER" --property=Linger
 systemctl --user is-system-running || true
 
-schedule_hour=$(date --date='1 minute ago' +%-H)
-schedule_minute=$(date --date='1 minute ago' +%-M)
+current_epoch=$(date +%s)
+target_epoch=$(( (current_epoch / 60 + 1) * 60 ))
+schedule_hour=$(date --date="@$target_epoch" +%-H)
+schedule_minute=$(date --date="@$target_epoch" +%-M)
 "$binary_path" service install \
   --config "$test_root/config.json" \
   --state-dir "$test_root/state" \
@@ -47,6 +49,14 @@ service_installed=true
 
 "$binary_path" service status
 systemctl --user cat tlsferry-renew.timer
+
+# Activate once to establish the persistent timer stamp, stop it before the
+# next scheduled minute, then restart it after that minute has been missed.
+systemctl --user stop tlsferry-renew.timer
+while (( $(date +%s) < target_epoch + 2 )); do
+  sleep 1
+done
+systemctl --user start tlsferry-renew.timer
 
 deadline=$((SECONDS + 30))
 while true; do
