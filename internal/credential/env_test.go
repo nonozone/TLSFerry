@@ -29,3 +29,19 @@ func TestParseEnvReferenceRejectsInvalidProfile(t *testing.T) {
 		t.Fatal("ParseEnvReference() succeeded for an invalid profile")
 	}
 }
+
+func TestEnvResolverValues(t *testing.T) {
+	resolver := EnvResolver{Lookup: func(name string) (string, bool) {
+		values := map[string]string{"ALIYUN_ACCESS_KEY_ID": "id", "ALIYUN_ACCESS_KEY_SECRET": "secret"}
+		value, ok := values[name]
+		return value, ok
+	}}
+
+	values, err := resolver.Values("env:ALIYUN", "ACCESS_KEY_ID", "ACCESS_KEY_SECRET")
+	if err != nil {
+		t.Fatalf("Values() returned an unexpected error: %v", err)
+	}
+	if values["ACCESS_KEY_ID"] != "id" || values["ACCESS_KEY_SECRET"] != "secret" {
+		t.Fatalf("Values() = %#v", values)
+	}
+}

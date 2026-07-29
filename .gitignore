@@ -2,6 +2,8 @@
 /dist/
 /tlsferry
 /config.json
+/.tlsferry/
+/.flowlatch/
 *.pem
 *.key
 *.crt

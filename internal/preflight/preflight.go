@@ -23,6 +23,7 @@ var dnsProviders = map[string]providerRequirement{
 
 var deploymentProviders = map[string]providerRequirement{
 	"tencent-cdn": {fields: []string{"SECRET_ID", "SECRET_KEY"}},
+	"tencent-cos": {fields: []string{"SECRET_ID", "SECRET_KEY"}},
 	"aliyun-cdn":  {fields: []string{"ACCESS_KEY_ID", "ACCESS_KEY_SECRET"}},
 	"qiniu-cdn":   {fields: []string{"ACCESS_KEY", "SECRET_KEY"}},
 }

@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 )
+
+var certificateNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
 
 type Config struct {
 	RenewBefore  string        `json:"renew_before"`
@@ -86,6 +89,9 @@ func (c Certificate) validate() error {
 	if strings.TrimSpace(c.Name) == "" {
 		return errors.New("name is required")
 	}
+	if !certificateNamePattern.MatchString(c.Name) {
+		return errors.New("name may contain only letters, numbers, dots, underscores, and hyphens")
+	}
 	if len(c.Domains) == 0 {
 		return errors.New("at least one domain is required")
 	}
@@ -119,9 +125,6 @@ func (c Certificate) validate() error {
 	}
 	if strings.TrimSpace(c.Issuer.Credential) == "" {
 		return errors.New("issuer.credential is required")
-	}
-	if len(c.Deployments) == 0 {
-		return errors.New("at least one deployment is required")
 	}
 	for i, deployment := range c.Deployments {
 		if strings.TrimSpace(deployment.Provider) == "" {

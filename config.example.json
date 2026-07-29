@@ -18,7 +18,19 @@
         {
           "provider": "tencent-cdn",
           "target": "assets.example.com",
-          "credential": "env:TENCENTCLOUD"
+          "credential": "env:TENCENTCLOUD",
+          "options": {
+            "billing": "on"
+          }
+        },
+        {
+          "provider": "tencent-cos",
+          "target": "downloads.example.com",
+          "credential": "env:TENCENTCLOUD",
+          "options": {
+            "region": "ap-shanghai",
+            "bucket": "downloads-1250000000"
+          }
         },
         {
           "provider": "aliyun-cdn",

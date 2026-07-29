@@ -55,3 +55,24 @@ func TestConfigRejectsDuplicateDomains(t *testing.T) {
 		t.Fatal("Validate() succeeded for duplicate domains")
 	}
 }
+
+func TestConfigAllowsIssuanceWithoutDeployments(t *testing.T) {
+	cfg := Config{
+		RenewBefore: "720h",
+		Certificates: []Certificate{{
+			Name:    "standalone",
+			Domains: []string{"example.com"},
+			Issuer: Issuer{
+				Type:         "acme",
+				Email:        "ops@example.com",
+				DirectoryURL: "https://acme.example/directory",
+				Challenge:    "dns-01",
+				DNSProvider:  "dnspod",
+				Credential:   "env:TENCENTCLOUD",
+			},
+		}},
+	}
+	if err := cfg.Validate(); err != nil {
+		t.Fatalf("Validate() rejected an issuance-only certificate: %v", err)
+	}
+}

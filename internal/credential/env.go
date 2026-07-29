@@ -16,9 +16,14 @@ type EnvResolver struct {
 }
 
 func (r EnvResolver) Require(reference string, fields ...string) error {
+	_, err := r.Values(reference, fields...)
+	return err
+}
+
+func (r EnvResolver) Values(reference string, fields ...string) (map[string]string, error) {
 	profile, err := ParseEnvReference(reference)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	lookup := r.Lookup
@@ -27,17 +32,20 @@ func (r EnvResolver) Require(reference string, fields ...string) error {
 	}
 
 	var missing []string
+	values := make(map[string]string, len(fields))
 	for _, field := range fields {
 		name := profile + "_" + field
 		value, ok := lookup(name)
 		if !ok || strings.TrimSpace(value) == "" {
 			missing = append(missing, name)
+			continue
 		}
+		values[field] = value
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("missing environment variable(s): %s", strings.Join(missing, ", "))
+		return nil, fmt.Errorf("missing environment variable(s): %s", strings.Join(missing, ", "))
 	}
-	return nil
+	return values, nil
 }
 
 func ParseEnvReference(reference string) (string, error) {
