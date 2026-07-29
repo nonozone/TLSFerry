@@ -419,6 +419,8 @@ func runService(args []string, stdout, stderr io.Writer) int {
 			running, path, err = service.LaunchdStatus()
 		case "linux":
 			running, path, err = service.SystemdStatus()
+		case "windows":
+			running, path, err = service.WindowsTaskStatus()
 		default:
 			err = fmt.Errorf("automatic service installation is not supported on %s", runtime.GOOS)
 		}
@@ -435,6 +437,8 @@ func runService(args []string, stdout, stderr io.Writer) int {
 			err = service.KickstartLaunchd()
 		case "linux":
 			err = service.KickstartSystemd()
+		case "windows":
+			err = service.KickstartWindowsTask()
 		default:
 			err = fmt.Errorf("automatic service installation is not supported on %s", runtime.GOOS)
 		}
@@ -447,6 +451,10 @@ func runService(args []string, stdout, stderr io.Writer) int {
 	case "logs":
 		if runtime.GOOS == "linux" {
 			fmt.Fprintf(stdout, "renewal logs: %s\n", service.SystemdLogsCommand())
+			return 0
+		}
+		if runtime.GOOS == "windows" {
+			fmt.Fprintf(stdout, "renewal task details: %s\n", service.WindowsTaskLogsCommand())
 			return 0
 		}
 		if runtime.GOOS != "darwin" {
@@ -468,6 +476,8 @@ func runService(args []string, stdout, stderr io.Writer) int {
 			path, err = service.UninstallLaunchd()
 		case "linux":
 			path, err = service.UninstallSystemd()
+		case "windows":
+			path, err = service.UninstallWindowsTask()
 		default:
 			err = fmt.Errorf("automatic service installation is not supported on %s", runtime.GOOS)
 		}
@@ -548,6 +558,15 @@ func runServiceInstall(args []string, stdout, stderr io.Writer) int {
 		})
 	case "linux":
 		path, err = service.InstallSystemd(service.SystemdConfig{
+			Executable: executable,
+			ConfigPath: absoluteConfig,
+			StateDir:   absoluteState,
+			OutputDir:  absoluteOutput,
+			Hour:       *hour,
+			Minute:     *minute,
+		})
+	case "windows":
+		path, err = service.InstallWindowsTask(service.WindowsTaskConfig{
 			Executable: executable,
 			ConfigPath: absoluteConfig,
 			StateDir:   absoluteState,

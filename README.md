@@ -268,7 +268,7 @@ Operational safeguards:
 - Stage events are emitted through a pluggable notifier interface; the CLI currently writes them to standard output for cron, systemd, and log collectors.
 - Both `--accept-tos` and `--execute` are mandatory because a due renewal performs real external operations.
 
-### Automatic checks on macOS and Linux
+### Automatic checks on macOS, Linux, and Windows
 
 Build or install TLSFerry at a permanent path first. Do not install the service from `go run`, because Go's temporary executable is removed when the command exits.
 
@@ -281,7 +281,7 @@ go build -o "$HOME/.local/bin/tlsferry" ./cmd/tlsferry
   --execute
 ```
 
-On macOS, the user-level `launchd` service runs once at login and daily at 03:17. On Linux, a native systemd user timer runs daily and uses `Persistent=true` to catch a missed check after the machine comes back online. Neither platform keeps TLSFerry running between checks.
+On macOS, the user-level `launchd` service runs once at login and daily at 03:17. On Linux, a native systemd user timer runs daily and uses `Persistent=true` to catch a missed check after the machine comes back online. On Windows, a least-privilege Task Scheduler entry runs daily, starts a missed run when possible, requires network availability, and ignores overlapping runs. No platform keeps TLSFerry running between checks.
 
 ```bash
 tlsferry service status
@@ -290,17 +290,18 @@ tlsferry service logs
 tlsferry service uninstall
 ```
 
-`service install` converts the configuration, state, output, and binary paths to absolute paths. Its launchd plist or systemd units contain no cloud secrets. Scheduled runs should use `keychain:` credentials on desktops or a service-scoped environment on Linux because interactive shell exports are not inherited reliably.
+`service install` converts the configuration, state, output, and binary paths to absolute paths. Its launchd plist, systemd units, or Task Scheduler XML contain no cloud secrets. Scheduled runs should use `keychain:` credentials on desktops or a service-scoped environment on servers because interactive shell exports are not inherited reliably.
 
 Linux installs `tlsferry-renew.service` and `tlsferry-renew.timer` under the current user's systemd directory and enables the timer with `systemctl --user`. The user manager must be available; on a headless server, enable linger for the dedicated service account if timers must run while it is logged out.
+
+Windows registers `TLSFerry Renewal` for the current interactive user. `tlsferry service logs` prints the `schtasks.exe` query needed to inspect the last result. The installer does not request or store a Windows password; a server task that must run while no user is signed in should be assigned manually to a dedicated task identity with its own protected credential environment.
 
 ## Planned milestones
 
 1. Add optional online DNS-control diagnostics before the first production issuance.
-2. Add a Windows Task Scheduler installer.
-3. Add renewable STS/OIDC/SSO and cloud instance-role credential adapters.
-4. Add webhook and email notification adapters.
-5. Add Alibaba Cloud OSS and Qiniu Kodo discovery/deployment where provider APIs support custom-domain certificate binding.
+2. Add renewable STS/OIDC/SSO and cloud instance-role credential adapters.
+3. Add webhook and email notification adapters.
+4. Add Alibaba Cloud OSS and Qiniu Kodo discovery/deployment where provider APIs support custom-domain certificate binding.
 
 ## Development
 

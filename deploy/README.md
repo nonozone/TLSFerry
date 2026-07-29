@@ -120,7 +120,20 @@ systemctl --user status tlsferry-renew.timer
 journalctl --user --unit tlsferry-renew.service
 ```
 
-The timer uses `Persistent=true`, `UMask=0077`, and a one-shot service. The user manager must be available; enable linger for a dedicated headless service account when the schedule must run while that account is logged out. The process is periodic, so health means the latest run exited successfully and the next schedule is installed. Windows Task Scheduler remains a later adapter.
+The timer uses `Persistent=true`, `UMask=0077`, and a one-shot service. The user manager must be available; enable linger for a dedicated headless service account when the schedule must run while that account is logged out.
+
+Windows uses a least-privilege task for the current interactive user:
+
+```powershell
+tlsferry.exe service install --config C:\TLSFerry\config.json --accept-tos --execute
+tlsferry.exe service status
+tlsferry.exe service run-now
+tlsferry.exe service logs
+```
+
+The generated Task Scheduler XML contains only absolute paths and renewal flags, never cloud credentials or a Windows password. It starts missed runs when possible, waits for network availability, and ignores overlapping instances. Because the task uses the current interactive token, a Windows server that must run while nobody is signed in needs a manually assigned dedicated task identity and a protected service credential environment.
+
+Across platforms the process is periodic, so health means the latest run exited successfully and the next schedule is installed.
 
 ## Upgrade and rollback
 

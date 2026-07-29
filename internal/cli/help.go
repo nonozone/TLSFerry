@@ -62,7 +62,7 @@ Checks expiry, renews due certificates, and deploys them. Safety flags are manda
   tlsferry service logs
   tlsferry service uninstall
 
-Manages the local unattended renewal schedule. Native installation supports macOS launchd and Linux systemd user timers.`,
+Manages the local unattended renewal schedule. Native installation supports macOS launchd, Linux systemd user timers, and Windows Task Scheduler.`,
 	"validate": `Usage:
   tlsferry validate --config FILE
 
