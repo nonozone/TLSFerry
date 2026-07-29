@@ -17,8 +17,9 @@ type providerRequirement struct {
 }
 
 var dnsProviders = map[string]providerRequirement{
-	"dnspod": {fields: []string{"SECRET_ID", "SECRET_KEY"}},
-	"aliyun": {fields: []string{"ACCESS_KEY_ID", "ACCESS_KEY_SECRET"}},
+	"cloudflare": {fields: []string{"API_TOKEN"}},
+	"dnspod":     {fields: []string{"SECRET_ID", "SECRET_KEY"}},
+	"aliyun":     {fields: []string{"ACCESS_KEY_ID", "ACCESS_KEY_SECRET"}},
 }
 
 var deploymentProviders = map[string]providerRequirement{

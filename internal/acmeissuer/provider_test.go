@@ -23,3 +23,31 @@ func TestProviderFactoryRequiresCredentials(t *testing.T) {
 		t.Fatalf("new() error = %v", err)
 	}
 }
+
+func TestProviderFactoryCreatesCloudflareProviderWithAPIToken(t *testing.T) {
+	factory := providerFactory{credentials: credential.EnvResolver{Lookup: func(name string) (string, bool) {
+		if name == "CLOUDFLARE_API_TOKEN" {
+			return "token", true
+		}
+		return "", false
+	}}}
+
+	provider, err := factory.new("cloudflare", "env:CLOUDFLARE")
+	if err != nil {
+		t.Fatalf("new() returned an unexpected error: %v", err)
+	}
+	if provider == nil {
+		t.Fatal("new() returned a nil provider")
+	}
+}
+
+func TestProviderFactoryRequiresCloudflareAPIToken(t *testing.T) {
+	factory := providerFactory{credentials: credential.EnvResolver{Lookup: func(string) (string, bool) {
+		return "", false
+	}}}
+
+	_, err := factory.new("cloudflare", "env:CLOUDFLARE")
+	if err == nil || !strings.Contains(err.Error(), "CLOUDFLARE_API_TOKEN") {
+		t.Fatalf("new() error = %v", err)
+	}
+}

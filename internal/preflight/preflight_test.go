@@ -60,3 +60,22 @@ func TestCheckerCollectsProblems(t *testing.T) {
 		}
 	}
 }
+
+func TestCheckerAcceptsCloudflareDNSProvider(t *testing.T) {
+	values := map[string]string{"CLOUDFLARE_API_TOKEN": "token"}
+	checker := Checker{Credentials: credential.EnvResolver{Lookup: func(name string) (string, bool) {
+		value, ok := values[name]
+		return value, ok
+	}}}
+	cfg := config.Config{Certificates: []config.Certificate{{
+		Name: "assets",
+		Issuer: config.Issuer{
+			DNSProvider: "cloudflare",
+			Credential:  "env:CLOUDFLARE",
+		},
+	}}}
+
+	if err := checker.Check(cfg); err != nil {
+		t.Fatalf("Check() returned an unexpected error: %v", err)
+	}
+}

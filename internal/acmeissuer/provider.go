@@ -5,6 +5,7 @@ import (
 
 	"github.com/go-acme/lego/v4/challenge"
 	"github.com/go-acme/lego/v4/providers/dns/alidns"
+	"github.com/go-acme/lego/v4/providers/dns/cloudflare"
 	"github.com/go-acme/lego/v4/providers/dns/tencentcloud"
 	"github.com/nonozone/TLSFerry/internal/credential"
 )
@@ -15,6 +16,20 @@ type providerFactory struct {
 
 func (f providerFactory) new(name, reference string) (challenge.Provider, error) {
 	switch name {
+	case "cloudflare":
+		values, err := f.credentials.Values(reference, "API_TOKEN")
+		if err != nil {
+			return nil, fmt.Errorf("cloudflare DNS credentials: %w", err)
+		}
+		providerConfig := cloudflare.NewDefaultConfig()
+		providerConfig.AuthToken = values["API_TOKEN"]
+		providerConfig.ZoneToken = values["API_TOKEN"]
+		provider, err := cloudflare.NewDNSProviderConfig(providerConfig)
+		if err != nil {
+			return nil, fmt.Errorf("create cloudflare provider: %w", err)
+		}
+		return provider, nil
+
 	case "dnspod":
 		values, err := f.credentials.Values(reference, "SECRET_ID", "SECRET_KEY")
 		if err != nil {

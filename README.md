@@ -21,7 +21,47 @@ go run ./cmd/tlsferry preflight --config config.example.json
 go run ./cmd/tlsferry issue --config config.example.json --certificate assets-example --accept-tos
 go run ./cmd/tlsferry deploy --config config.example.json --certificate assets-example --provider tencent-cdn --execute
 go run ./cmd/tlsferry renew --config config.example.json --accept-tos --execute
+go run ./cmd/tlsferry auth login cloudflare
+go run ./cmd/tlsferry auth login tencent
+go run ./cmd/tlsferry completion zsh
 ```
+
+## Command help and shell completion
+
+Every top-level command supports contextual help, and spelling mistakes suggest the closest command:
+
+```bash
+tlsferry help discover
+tlsferry discover --help
+tlsferry discovr
+# Did you mean "discover"?
+```
+
+Install Tab completion for the current shell in one step:
+
+```bash
+tlsferry completion install
+```
+
+The installer detects `$SHELL`. Override it when needed:
+
+```bash
+tlsferry completion install --shell zsh
+tlsferry completion install --shell bash
+tlsferry completion install --shell fish
+```
+
+Zsh installs `_tlsferry` under `~/.zfunc` and adds an idempotent managed activation block to `~/.zshrc`. Bash installs into the user bash-completion directory and adds a managed source block to `~/.bashrc`. Fish uses `~/.config/fish/completions`, which Fish loads automatically. Re-running the installer updates the completion script without duplicating shell configuration.
+
+To inspect or integrate the scripts manually, print them to standard output:
+
+```bash
+tlsferry completion zsh
+tlsferry completion bash
+tlsferry completion fish
+```
+
+Completion covers commands, subcommands, provider names, output formats, common flags, and file/directory arguments. Generated scripts are written only to stdout; unsupported shells and installation failures are written to stderr and return a non-zero exit status.
 
 Example plan:
 
@@ -30,7 +70,7 @@ TLSFerry plan (renew when validity is below 720h)
 
 assets-example
   domains: assets.example.com
-  issue:   acme via dns-01 using dnspod
+  issue:   acme via dns-01 using cloudflare
   deploy:  tencent-cdn -> assets.example.com
   deploy:  aliyun-cdn -> assets.example.com
   deploy:  qiniu-cdn -> assets.example.com
@@ -39,22 +79,101 @@ assets-example
 ## Configuration principles
 
 - Secrets are never stored directly in the main configuration file.
-- A credential value such as `env:TENCENTCLOUD` references environment-based credentials that a provider adapter will resolve.
-- `preflight` checks provider support and required environment variables without printing secret values or contacting cloud APIs.
-- Credential profiles expand into provider-specific variables, such as `env:TENCENTCLOUD` requiring `TENCENTCLOUD_SECRET_ID` and `TENCENTCLOUD_SECRET_KEY`.
+- A credential value such as `keychain:TENCENTCLOUD` references credentials stored by the operating-system credential manager.
+- `env:PROFILE` remains available for servers, containers, and CI systems.
+- `preflight` checks provider support and required credential fields without printing secret values or contacting cloud APIs.
 - DNS-01 is the initial ACME challenge because it works reliably for CDN and object-storage domains and supports wildcard certificates.
 - Issuers and deployment providers remain separate so one certificate can be delivered to several cloud platforms.
 - Deployments are optional while using issuance-only workflows.
 
 See [`config.example.json`](config.example.json) for the current schema.
 
-## Issuing a certificate
+## Cloud authentication
 
-Set the credential variables referenced by the selected certificate, then run `issue`. For example, `env:TENCENTCLOUD` uses:
+For a local workstation, store credentials in macOS Keychain, Windows Credential Manager, or Linux Secret Service. `auth login` opens the provider's credential page, reads the values without terminal echo, and stores them outside `config.json`:
 
 ```bash
-export TENCENTCLOUD_SECRET_ID=...
-export TENCENTCLOUD_SECRET_KEY=...
+tlsferry auth login tencent
+tlsferry auth login aliyun
+tlsferry auth login qiniu
+tlsferry auth login cloudflare
+tlsferry auth status --profile TENCENTCLOUD
+```
+
+The resulting references are `keychain:CLOUDFLARE`, `keychain:TENCENTCLOUD`, `keychain:ALIYUN`, and `keychain:QINIU`. Remove one with:
+
+```bash
+tlsferry auth logout --profile TENCENTCLOUD
+```
+
+The initial release uses a browser-assisted key import rather than claiming a common OAuth flow that the providers do not share. Environment profiles remain compatible; for example, `env:TENCENTCLOUD` reads `TENCENTCLOUD_SECRET_ID` and `TENCENTCLOUD_SECRET_KEY`.
+
+## Discovering CDN domains
+
+After connecting an account, TLSFerry can read the CDN domain inventory without changing cloud resources:
+
+```bash
+tlsferry discover cloud --provider tencent
+tlsferry discover cloud --provider aliyun
+tlsferry discover cloud --provider qiniu
+```
+
+The default profiles are `keychain:TENCENTCLOUD`, `keychain:ALIYUN`, and `keychain:QINIU`. Select another account profile or machine-readable output with:
+
+```bash
+tlsferry discover cloud \
+  --provider tencent \
+  --credential keychain:TENCENT_PRODUCTION \
+  --format json
+```
+
+The table reports provider, domain, cloud-side status, HTTPS state, and CNAME. Tencent Cloud discovery uses the CDN domain configuration list, Alibaba Cloud discovery follows every `DescribeUserDomains` page, and Qiniu uses a signed read-only domain-list request.
+
+Discovery does not issue certificates, enable HTTPS, or import domains into `config.json`. Selective import and DNS-control verification are the next safety boundary; a discovered domain must not be silently taken over.
+
+## DNS-01 providers
+
+TLSFerry changes only the temporary `_acme-challenge` TXT record. It does not change the business CNAME that points a hostname at a CDN. The DNS provider is selected independently from the deployment provider, so a Cloudflare-hosted zone can deliver its certificate to Tencent Cloud CDN.
+
+| DNS provider | Config value | Credential fields | Recommended access |
+| --- | --- | --- | --- |
+| Cloudflare | `cloudflare` | `API_TOKEN` | `Zone:DNS:Edit` and `Zone:Zone:Read`, restricted to the required zone |
+| DNSPod | `dnspod` | `SECRET_ID`, `SECRET_KEY` | DNS record read/write access for the required public zone |
+| Alibaba Cloud DNS | `aliyun` | `ACCESS_KEY_ID`, `ACCESS_KEY_SECRET` | DNS record read/write access for the required zone |
+
+For Cloudflare, create a token from the **Edit zone DNS** template, restrict its resources to the required zone, and store it locally:
+
+```bash
+tlsferry auth login cloudflare
+# Saves keychain:CLOUDFLARE
+```
+
+For DNSPod, the existing Tencent Cloud profile can be reused for issuance and Tencent CDN deployment when its CAM policy includes both DNSPod record management and the required SSL/CDN actions:
+
+```bash
+tlsferry auth login tencent
+# Saves keychain:TENCENTCLOUD
+```
+
+If DNS is hosted by Cloudflare while CDN is hosted by Tencent Cloud, use separate credential references in the same certificate entry: `keychain:CLOUDFLARE` under `issuer` and `keychain:TENCENTCLOUD` under `deployments`.
+
+## Issuing a certificate
+
+Store the DNS credential referenced by the selected certificate, then run `issue`. The example configuration uses Cloudflare DNS and Tencent Cloud deployment:
+
+```bash
+tlsferry auth login cloudflare
+tlsferry auth login tencent
+go run ./cmd/tlsferry issue \
+  --config config.example.json \
+  --certificate assets-example \
+  --accept-tos
+```
+
+For a headless server or CI job, change the issuer reference to `env:CLOUDFLARE` and export:
+
+```bash
+export CLOUDFLARE_API_TOKEN=...
 go run ./cmd/tlsferry issue \
   --config config.example.json \
   --certificate assets-example \
@@ -116,13 +235,39 @@ Operational safeguards:
 - Stage events are emitted through a pluggable notifier interface; the CLI currently writes them to standard output for cron, systemd, and log collectors.
 - Both `--accept-tos` and `--execute` are mandatory because a due renewal performs real external operations.
 
-For unattended operation, schedule the compiled binary with cron or a systemd timer. Run it at least daily; the expiry window prevents unnecessary certificate orders.
+### Automatic checks on macOS
+
+Build or install TLSFerry at a permanent path first. Do not install the service from `go run`, because Go's temporary executable is removed when the command exits.
+
+```bash
+mkdir -p "$HOME/.local/bin"
+go build -o "$HOME/.local/bin/tlsferry" ./cmd/tlsferry
+"$HOME/.local/bin/tlsferry" service install \
+  --config "$PWD/config.json" \
+  --accept-tos \
+  --execute
+```
+
+The user-level `launchd` service runs once at login and daily at 03:17. It does not keep a window or daemon open between checks. The computer must be awake and online occasionally; launchd runs a sleeping machine's scheduled check after wake.
+
+```bash
+tlsferry service status
+tlsferry service run-now
+tlsferry service logs
+tlsferry service uninstall
+```
+
+`service install` converts the configuration, state, output, and binary paths to absolute paths. Its plist contains no cloud secrets. Scheduled runs should use `keychain:` credentials because a GUI launch agent does not inherit credentials exported in an interactive shell.
+
+For unattended Linux servers, cron and systemd timers remain supported manually. Native `systemd timer` installation is the next platform adapter.
 
 ## Planned milestones
 
-1. Add webhook and email notification adapters.
-2. Add Alibaba Cloud OSS and Qiniu Kodo deployment where provider APIs support custom-domain certificate binding.
-3. Add daemon mode and an optional Web console after the automation core is stable.
+1. Add selective import, DNS-control verification, and explicit enrollment for discovered domains.
+2. Add native systemd timer and Windows Task Scheduler installers.
+3. Add renewable STS/OIDC/SSO and cloud instance-role credential adapters.
+4. Add webhook and email notification adapters.
+5. Add Alibaba Cloud OSS and Qiniu Kodo discovery/deployment where provider APIs support custom-domain certificate binding.
 
 ## Development
 

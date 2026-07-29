@@ -11,14 +11,14 @@
         "email": "ops@example.com",
         "directory_url": "https://acme-v02.api.letsencrypt.org/directory",
         "challenge": "dns-01",
-        "dns_provider": "dnspod",
-        "credential": "env:TENCENTCLOUD"
+        "dns_provider": "cloudflare",
+        "credential": "keychain:CLOUDFLARE"
       },
       "deployments": [
         {
           "provider": "tencent-cdn",
           "target": "assets.example.com",
-          "credential": "env:TENCENTCLOUD",
+          "credential": "keychain:TENCENTCLOUD",
           "options": {
             "billing": "on"
           }
@@ -26,7 +26,7 @@
         {
           "provider": "tencent-cos",
           "target": "downloads.example.com",
-          "credential": "env:TENCENTCLOUD",
+          "credential": "keychain:TENCENTCLOUD",
           "options": {
             "region": "ap-shanghai",
             "bucket": "downloads-1250000000"
@@ -35,12 +35,12 @@
         {
           "provider": "aliyun-cdn",
           "target": "assets.example.com",
-          "credential": "env:ALIYUN"
+          "credential": "keychain:ALIYUN"
         },
         {
           "provider": "qiniu-cdn",
           "target": "assets.example.com",
-          "credential": "env:QINIU"
+          "credential": "keychain:QINIU"
         }
       ]
     }
