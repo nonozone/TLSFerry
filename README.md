@@ -257,7 +257,7 @@ Operational safeguards:
 - Stage events are emitted through a pluggable notifier interface; the CLI currently writes them to standard output for cron, systemd, and log collectors.
 - Both `--accept-tos` and `--execute` are mandatory because a due renewal performs real external operations.
 
-### Automatic checks on macOS
+### Automatic checks on macOS and Linux
 
 Build or install TLSFerry at a permanent path first. Do not install the service from `go run`, because Go's temporary executable is removed when the command exits.
 
@@ -270,7 +270,7 @@ go build -o "$HOME/.local/bin/tlsferry" ./cmd/tlsferry
   --execute
 ```
 
-The user-level `launchd` service runs once at login and daily at 03:17. It does not keep a window or daemon open between checks. The computer must be awake and online occasionally; launchd runs a sleeping machine's scheduled check after wake.
+On macOS, the user-level `launchd` service runs once at login and daily at 03:17. On Linux, a native systemd user timer runs daily and uses `Persistent=true` to catch a missed check after the machine comes back online. Neither platform keeps TLSFerry running between checks.
 
 ```bash
 tlsferry service status
@@ -279,14 +279,14 @@ tlsferry service logs
 tlsferry service uninstall
 ```
 
-`service install` converts the configuration, state, output, and binary paths to absolute paths. Its plist contains no cloud secrets. Scheduled runs should use `keychain:` credentials because a GUI launch agent does not inherit credentials exported in an interactive shell.
+`service install` converts the configuration, state, output, and binary paths to absolute paths. Its launchd plist or systemd units contain no cloud secrets. Scheduled runs should use `keychain:` credentials on desktops or a service-scoped environment on Linux because interactive shell exports are not inherited reliably.
 
-For unattended Linux servers, cron and systemd timers remain supported manually. Native `systemd timer` installation is the next platform adapter.
+Linux installs `tlsferry-renew.service` and `tlsferry-renew.timer` under the current user's systemd directory and enables the timer with `systemctl --user`. The user manager must be available; on a headless server, enable linger for the dedicated service account if timers must run while it is logged out.
 
 ## Planned milestones
 
 1. Add selective import, DNS-control verification, and explicit enrollment for discovered domains.
-2. Add native systemd timer and Windows Task Scheduler installers.
+2. Add a Windows Task Scheduler installer.
 3. Add renewable STS/OIDC/SSO and cloud instance-role credential adapters.
 4. Add webhook and email notification adapters.
 5. Add Alibaba Cloud OSS and Qiniu Kodo discovery/deployment where provider APIs support custom-domain certificate binding.

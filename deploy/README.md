@@ -112,7 +112,15 @@ tlsferry service run-now
 tlsferry service logs
 ```
 
-The process is a periodic task, so health means the latest run exited successfully and the next schedule is installed. Linux systemd support is tracked as the next CE platform adapter. Until it lands, operators must create their own timer and preserve the same absolute-path and secret-isolation rules. Windows Task Scheduler remains a later adapter.
+Linux uses a native user-level systemd timer:
+
+```bash
+tlsferry service install --config /absolute/path/config.json --accept-tos --execute
+systemctl --user status tlsferry-renew.timer
+journalctl --user --unit tlsferry-renew.service
+```
+
+The timer uses `Persistent=true`, `UMask=0077`, and a one-shot service. The user manager must be available; enable linger for a dedicated headless service account when the schedule must run while that account is logged out. The process is periodic, so health means the latest run exited successfully and the next schedule is installed. Windows Task Scheduler remains a later adapter.
 
 ## Upgrade and rollback
 

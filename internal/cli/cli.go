@@ -324,21 +324,48 @@ func runService(args []string, stdout, stderr io.Writer) int {
 	case "install":
 		return runServiceInstall(args[1:], stdout, stderr)
 	case "status":
-		running, path, err := service.LaunchdStatus()
+		var running bool
+		var path string
+		var err error
+		switch runtime.GOOS {
+		case "darwin":
+			running, path, err = service.LaunchdStatus()
+		case "linux":
+			running, path, err = service.SystemdStatus()
+		default:
+			err = fmt.Errorf("automatic service installation is not supported on %s", runtime.GOOS)
+		}
 		if err != nil {
 			fmt.Fprintf(stderr, "service status: %v\n", err)
 			return 1
 		}
-		fmt.Fprintf(stdout, "service installed: %t\nservice running: %t\nplist: %s\n", fileExists(path), running, path)
+		fmt.Fprintf(stdout, "service installed: %t\nservice running: %t\nschedule: %s\n", fileExists(path), running, path)
 		return 0
 	case "run-now":
-		if err := service.KickstartLaunchd(); err != nil {
+		var err error
+		switch runtime.GOOS {
+		case "darwin":
+			err = service.KickstartLaunchd()
+		case "linux":
+			err = service.KickstartSystemd()
+		default:
+			err = fmt.Errorf("automatic service installation is not supported on %s", runtime.GOOS)
+		}
+		if err != nil {
 			fmt.Fprintf(stderr, "service run-now: %v\n", err)
 			return 1
 		}
 		fmt.Fprintln(stdout, "renewal service started")
 		return 0
 	case "logs":
+		if runtime.GOOS == "linux" {
+			fmt.Fprintf(stdout, "renewal logs: %s\n", service.SystemdLogsCommand())
+			return 0
+		}
+		if runtime.GOOS != "darwin" {
+			fmt.Fprintf(stderr, "service logs: automatic service installation is not supported on %s\n", runtime.GOOS)
+			return 1
+		}
 		home, err := os.UserHomeDir()
 		if err != nil {
 			fmt.Fprintf(stderr, "service logs: %v\n", err)
@@ -347,7 +374,16 @@ func runService(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "renewal log: %s\nerror log: %s\n", filepath.Join(home, ".tlsferry", "logs", "renew.log"), filepath.Join(home, ".tlsferry", "logs", "renew.error.log"))
 		return 0
 	case "uninstall":
-		path, err := service.UninstallLaunchd()
+		var path string
+		var err error
+		switch runtime.GOOS {
+		case "darwin":
+			path, err = service.UninstallLaunchd()
+		case "linux":
+			path, err = service.UninstallSystemd()
+		default:
+			err = fmt.Errorf("automatic service installation is not supported on %s", runtime.GOOS)
+		}
 		if err != nil {
 			fmt.Fprintf(stderr, "service uninstall: %v\n", err)
 			return 1
@@ -411,20 +447,35 @@ func runServiceInstall(args []string, stdout, stderr io.Writer) int {
 	if !ok {
 		return 1
 	}
-	path, err := service.InstallLaunchd(service.LaunchdConfig{
-		Executable: executable,
-		ConfigPath: absoluteConfig,
-		StateDir:   absoluteState,
-		OutputDir:  absoluteOutput,
-		LogDir:     filepath.Join(home, ".tlsferry", "logs"),
-		Hour:       *hour,
-		Minute:     *minute,
-	})
+	var path string
+	switch runtime.GOOS {
+	case "darwin":
+		path, err = service.InstallLaunchd(service.LaunchdConfig{
+			Executable: executable,
+			ConfigPath: absoluteConfig,
+			StateDir:   absoluteState,
+			OutputDir:  absoluteOutput,
+			LogDir:     filepath.Join(home, ".tlsferry", "logs"),
+			Hour:       *hour,
+			Minute:     *minute,
+		})
+	case "linux":
+		path, err = service.InstallSystemd(service.SystemdConfig{
+			Executable: executable,
+			ConfigPath: absoluteConfig,
+			StateDir:   absoluteState,
+			OutputDir:  absoluteOutput,
+			Hour:       *hour,
+			Minute:     *minute,
+		})
+	default:
+		err = fmt.Errorf("automatic service installation is not supported on %s", runtime.GOOS)
+	}
 	if err != nil {
 		fmt.Fprintf(stderr, "service install: %v\n", err)
 		return 1
 	}
-	fmt.Fprintf(stdout, "renewal service installed: %s\ndaily check: %02d:%02d and at login\n", path, *hour, *minute)
+	fmt.Fprintf(stdout, "renewal service installed: %s\ndaily check: %02d:%02d\n", path, *hour, *minute)
 	return 0
 }
 
