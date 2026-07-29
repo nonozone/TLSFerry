@@ -68,6 +68,8 @@ func RunWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return runPlan(args[1:], stdout, stderr)
 	case "preflight":
 		return runPreflight(args[1:], stdout, stderr)
+	case "dns-check":
+		return runDNSCheck(args[1:], stdout, stderr)
 	case "issue":
 		return runIssue(args[1:], stdout, stderr)
 	case "deploy":
@@ -111,6 +113,10 @@ var releaseSmokeLoadBundle = func(root, name string) (certstore.Bundle, error) {
 	return (certstore.Store{Root: root}).Load(name)
 }
 var releaseSmokeNow = time.Now
+
+var dnsControlCheck = func(certificate config.Certificate, domain string) error {
+	return (acmeissuer.DNSControlChecker{}).Check(certificate.Issuer.DNSProvider, certificate.Issuer.Credential, domain)
+}
 
 type releaseSmokeEvidence struct {
 	SchemaVersion int       `json:"schema_version"`
@@ -1048,6 +1054,68 @@ func runPreflight(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+func runDNSCheck(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("dns-check", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	configPath := flags.String("config", "config.json", "path to the TLSFerry configuration")
+	certificateName := flags.String("certificate", "", "certificate configuration name")
+	domain := flags.String("domain", "", "one exact domain configured for the certificate")
+	confirmedDomain := flags.String("confirm-domain", "", "repeat the exact domain to authorize a temporary TXT record")
+	execute := flags.Bool("execute", false, "create and clean the temporary DNS record")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if *certificateName == "" || *domain == "" {
+		fmt.Fprintln(stderr, "dns-check: --certificate and --domain are required")
+		return 2
+	}
+	cfg, err := config.Load(*configPath)
+	if err != nil {
+		fmt.Fprintf(stderr, "dns-check failed: %v\n", err)
+		return 1
+	}
+	certificate, ok := findCertificate(cfg, *certificateName)
+	if !ok {
+		fmt.Fprintf(stderr, "dns-check failed: certificate %q was not found\n", *certificateName)
+		return 1
+	}
+	configured := false
+	for _, configuredDomain := range certificate.Domains {
+		if configuredDomain == *domain {
+			configured = true
+			break
+		}
+	}
+	if !configured {
+		fmt.Fprintf(stderr, "dns-check refused: domain %q is not configured for certificate %q\n", *domain, certificate.Name)
+		return 2
+	}
+	if certificate.Issuer.DNSProvider == "tlsferry-cloud" {
+		fmt.Fprintln(stderr, "dns-check refused: tlsferry-cloud uses a job-scoped remote protocol and cannot be diagnosed independently")
+		return 2
+	}
+	recordDomain := strings.TrimPrefix(*domain, "*.")
+	fmt.Fprintln(stdout, "DNS control check preview:")
+	fmt.Fprintf(stdout, "  certificate: %s\n", certificate.Name)
+	fmt.Fprintf(stdout, "  domain:      %s\n", *domain)
+	fmt.Fprintf(stdout, "  provider:    %s\n", certificate.Issuer.DNSProvider)
+	fmt.Fprintf(stdout, "  record:      _acme-challenge.%s TXT (random temporary value)\n", recordDomain)
+	if !*execute {
+		fmt.Fprintln(stdout, "No DNS record was changed. Re-run with --confirm-domain matching --domain and --execute after reviewing the target.")
+		return 0
+	}
+	if *confirmedDomain != *domain {
+		fmt.Fprintf(stderr, "dns-check refused: --confirm-domain must exactly equal selected domain %q\n", *domain)
+		return 2
+	}
+	if err := dnsControlCheck(certificate, *domain); err != nil {
+		fmt.Fprintf(stderr, "dns-check failed: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "DNS control check passed for %s: temporary TXT write and cleanup passed.\n", *domain)
+	return 0
+}
+
 func runValidate(args []string, stdout, stderr io.Writer) int {
 	flags := flag.NewFlagSet("validate", flag.ContinueOnError)
 	flags.SetOutput(stderr)
@@ -1092,6 +1160,7 @@ func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "  tlsferry validate --config config.json")
 	fmt.Fprintln(w, "  tlsferry plan     --config config.json")
 	fmt.Fprintln(w, "  tlsferry preflight --config config.json")
+	fmt.Fprintln(w, "  tlsferry dns-check --config config.json --certificate NAME --domain DOMAIN")
 	fmt.Fprintln(w, "  tlsferry issue --config config.json --certificate NAME --accept-tos")
 	fmt.Fprintln(w, "  tlsferry deploy --config config.json --certificate NAME --provider PROVIDER --execute")
 	fmt.Fprintln(w, "  tlsferry renew --config config.json --accept-tos --execute")

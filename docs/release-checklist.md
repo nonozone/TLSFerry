@@ -66,6 +66,7 @@ The gate uses reserved `.invalid` domains, the Let's Encrypt staging directory, 
 - The post-enrollment configuration passes `preflight`, and neither successful output nor failure diagnostics expose credential values.
 - A Let's Encrypt staging issuance and one non-production provider deployment are tested with least-privilege credentials.
 - Logs and errors contain no credentials, certificate private keys, bearer tokens, or ACME challenge values.
+- For direct DNS providers, `tlsferry dns-check` confirms temporary TXT create/delete permission before issuance. This is a prerequisite diagnostic, not evidence of ACME propagation or certificate issuance.
 
 Use `config.release-smoke.example.json` as the starting point for this real-environment gate. Copy it to a private path, replace every `example.com` value and the email with a test hostname you own, and load the isolated `CLOUDFLARE_STAGING` and `TENCENTCLOUD_STAGING` profiles. Preview `tlsferry release-smoke` first, then execute only with the exact staging directory and `--confirm-test-target`. Preserve its sanitized JSON evidence. A successful command is still `pending_cleanup`; restore the previous provider binding, remove the uploaded test certificate, and run `tlsferry release-smoke cleanup` with a sanitized provider/ticket reference. The resulting `ready_for_review` record is operator-confirmed, not provider-verified; review the provider state before marking either real-environment row Pass.
 

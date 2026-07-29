@@ -187,6 +187,59 @@ func TestIssueRequiresCertificateName(t *testing.T) {
 	}
 }
 
+func TestDNSCheckPreviewMakesNoExternalCalls(t *testing.T) {
+	configPath := saveReleaseSmokeConfig(t, letsEncryptStagingDirectory)
+	called := false
+	original := dnsControlCheck
+	dnsControlCheck = func(config.Certificate, string) error { called = true; return nil }
+	t.Cleanup(func() { dnsControlCheck = original })
+
+	var stdout, stderr strings.Builder
+	code := Run([]string{"dns-check", "--config", configPath, "--certificate", "staging", "--domain", "staging.example.com"}, &stdout, &stderr)
+	if code != 0 || called || !strings.Contains(stdout.String(), "No DNS record was changed") {
+		t.Fatalf("Run() code = %d, called = %t, stdout = %q, stderr = %q", code, called, stdout.String(), stderr.String())
+	}
+}
+
+func TestDNSCheckRequiresConfiguredAndExactlyConfirmedDomain(t *testing.T) {
+	configPath := saveReleaseSmokeConfig(t, letsEncryptStagingDirectory)
+	for _, test := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"unconfigured", []string{"--domain", "other.example.com"}, "is not configured"},
+		{"unconfirmed", []string{"--domain", "staging.example.com", "--execute"}, "--confirm-domain"},
+		{"wrong confirmation", []string{"--domain", "staging.example.com", "--confirm-domain", "other.example.com", "--execute"}, "must exactly equal"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr strings.Builder
+			args := append([]string{"dns-check", "--config", configPath, "--certificate", "staging"}, test.args...)
+			if code := Run(args, &stdout, &stderr); code != 2 || !strings.Contains(stderr.String(), test.want) {
+				t.Fatalf("Run() code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
+func TestDNSCheckExecutesTemporaryRecordLifecycle(t *testing.T) {
+	configPath := saveReleaseSmokeConfig(t, letsEncryptStagingDirectory)
+	var gotCertificate config.Certificate
+	var gotDomain string
+	original := dnsControlCheck
+	dnsControlCheck = func(certificate config.Certificate, domain string) error {
+		gotCertificate, gotDomain = certificate, domain
+		return nil
+	}
+	t.Cleanup(func() { dnsControlCheck = original })
+
+	var stdout, stderr strings.Builder
+	code := Run([]string{"dns-check", "--config", configPath, "--certificate", "staging", "--domain", "staging.example.com", "--confirm-domain", "staging.example.com", "--execute"}, &stdout, &stderr)
+	if code != 0 || gotCertificate.Name != "staging" || gotDomain != "staging.example.com" || !strings.Contains(stdout.String(), "write and cleanup passed") {
+		t.Fatalf("Run() code = %d, certificate = %#v, domain = %q, stdout = %q, stderr = %q", code, gotCertificate, gotDomain, stdout.String(), stderr.String())
+	}
+}
+
 func TestVersionPrintsBuildVersion(t *testing.T) {
 	originalVersion := version
 	version = "v1.2.3"
@@ -359,7 +412,7 @@ func TestCompletionScriptsContainCommandsAndProviderValues(t *testing.T) {
 		if code != 0 {
 			t.Fatalf("completion %s code = %d, stderr = %q", shell, code, stderr.String())
 		}
-		for _, expected := range []string{"discover", "enroll", "release-smoke", "cleanup", "cleanup-reference", "tencent", "aliyun", "qiniu", "cloudflare"} {
+		for _, expected := range []string{"discover", "dns-check", "confirm-domain", "enroll", "release-smoke", "cleanup", "cleanup-reference", "tencent", "aliyun", "qiniu", "cloudflare"} {
 			if !strings.Contains(stdout.String(), expected) {
 				t.Fatalf("completion %s omitted %q", shell, expected)
 			}

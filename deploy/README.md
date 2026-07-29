@@ -98,9 +98,10 @@ The artifact smoke verifies all six checksums and archive manifests, compares th
 1. Install the binary at a permanent path.
 2. Copy and edit the example configuration outside the repository.
 3. Store each credential with `tlsferry auth login PROVIDER`, or inject an isolated server environment.
-4. Run `tlsferry validate`, `tlsferry plan`, and `tlsferry preflight`.
-5. Perform one explicitly authorized manual issuance or renewal.
-6. Install the host scheduler.
+4. Run `tlsferry validate`, `tlsferry plan`, and the offline `tlsferry preflight`.
+5. Before the first production issuance, preview and explicitly execute `tlsferry dns-check` once for each relevant domain or DNS zone. This creates and immediately removes one temporary `_acme-challenge` TXT record; it is not a certificate issuance or propagation check.
+6. Perform one explicitly authorized manual issuance or renewal.
+7. Install the host scheduler.
 
 Installation is complete only when `tlsferry version` reports the intended tag, preflight passes, a manual run succeeds, and scheduler status/logs are readable.
 
@@ -162,6 +163,7 @@ Configuration and state formats must remain backward compatible within a release
 - Scheduler cannot read credentials: use the operating-system keychain or explicitly inject the service environment; interactive shell exports are not inherited reliably.
 - Renewal overlaps: TLSFerry's state lock blocks concurrent runs; inspect the previous process and logs before removing stale operating-system artifacts.
 - Certificate was uploaded but HTTPS is unchanged: verify the provider deployment status and the exact CDN hostname binding.
+- `dns-check` reports cleanup failure: assume the temporary `_acme-challenge` TXT still exists, remove it in the DNS provider console, and verify the credential's delete permission before issuing.
 
 ## Project-specific notes
 

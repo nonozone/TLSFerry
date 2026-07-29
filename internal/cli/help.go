@@ -7,7 +7,7 @@ import (
 )
 
 var commandNames = []string{
-	"auth", "completion", "deploy", "discover", "enroll", "help", "issue", "plan", "preflight", "release-smoke", "renew", "service", "validate", "version",
+	"auth", "completion", "deploy", "discover", "dns-check", "enroll", "help", "issue", "plan", "preflight", "release-smoke", "renew", "service", "validate", "version",
 }
 
 var commandHelp = map[string]string{
@@ -35,6 +35,11 @@ Options:
   --provider     Required cloud provider
   --credential   env:PROFILE or keychain:PROFILE; defaults to the provider profile
   --format       table (default) or json`,
+	"dns-check": `Usage:
+  tlsferry dns-check --config FILE --certificate NAME --domain DOMAIN
+  tlsferry dns-check --config FILE --certificate NAME --domain DOMAIN --confirm-domain DOMAIN --execute
+
+Previews or performs an online DNS permission check for one configured certificate domain. Execution creates one random temporary _acme-challenge TXT record and immediately removes it. It does not issue a certificate or wait for DNS propagation. The offline preflight command remains unchanged.`,
 	"enroll": `Usage:
   tlsferry enroll cloud --provider tencent|aliyun|qiniu --domain DOMAIN --email EMAIL --dns-provider PROVIDER --dns-credential REFERENCE [--credential REFERENCE] [--name NAME] [--config FILE] [--execute]
 

@@ -155,7 +155,7 @@ const zshCompletion = `#compdef tlsferry
 
 _tlsferry() {
   local -a commands auth_providers cloud_providers
-  commands=(auth completion deploy discover enroll help issue plan preflight release-smoke renew service validate version)
+  commands=(auth completion deploy discover dns-check enroll help issue plan preflight release-smoke renew service validate version)
   auth_providers=(cloudflare tencent aliyun qiniu)
   cloud_providers=(tencent aliyun qiniu)
   if (( CURRENT == 2 )); then
@@ -184,6 +184,9 @@ _tlsferry() {
       if (( CURRENT == 3 )); then _values 'action' install status run-now logs uninstall; return; fi
       _arguments '--config[configuration file]:file:_files' '--hour[daily hour]:hour' '--minute[daily minute]:minute' '--accept-tos[accept ACME terms]' '--execute[allow external operations]'
       ;;
+    dns-check)
+      _arguments '--config[configuration file]:file:_files' '--certificate[certificate name]:name' '--domain[exact configured domain]:domain' '--confirm-domain[exact DNS check domain]:domain' '--execute[create and clean a temporary TXT record]'
+      ;;
     issue|deploy|release-smoke|renew|validate|plan|preflight)
       _arguments '1:action:(cleanup)' '--config[configuration file]:file:_files' '--certificate[certificate name]:name' '--provider[deployment provider]:provider:(tencent-cdn tencent-cos aliyun-cdn qiniu-cdn)' '--confirm-test-target[exact non-production deployment target]:domain' '--cleanup-reference[sanitized cleanup reference]:reference' '--state-dir[state directory]:directory:_directories' '--output-dir[certificate output directory]:directory:_directories' '--input-dir[certificate input directory]:directory:_directories' '--evidence[sanitized evidence file]:file:_files' '--output[new evidence file]:file:_files' '--accept-tos[accept ACME terms]' '--execute[allow external operations]' '--force[force renewal]'
       ;;
@@ -199,7 +202,7 @@ const bashCompletion = `_tlsferry_completion() {
   prev="${COMP_WORDS[COMP_CWORD-1]}"
   command="${COMP_WORDS[1]}"
   action="${COMP_WORDS[2]}"
-  local commands="auth completion deploy discover enroll help issue plan preflight release-smoke renew service validate version"
+  local commands="auth completion deploy discover dns-check enroll help issue plan preflight release-smoke renew service validate version"
   local auth_providers="cloudflare tencent aliyun qiniu"
   local cloud_providers="tencent aliyun qiniu"
   if [[ $COMP_CWORD -eq 1 ]]; then COMPREPLY=( $(compgen -W "$commands" -- "$cur") ); return; fi
@@ -218,6 +221,7 @@ const bashCompletion = `_tlsferry_completion() {
     enroll) COMPREPLY=( $(compgen -W "cloud --provider --domain --name --email --dns-provider --dns-credential --credential --config --directory-url --execute" -- "$cur") ) ;;
     completion) COMPREPLY=( $(compgen -W "zsh bash fish install --shell" -- "$cur") ) ;;
     service) COMPREPLY=( $(compgen -W "install status run-now logs uninstall --config --hour --minute --accept-tos --execute" -- "$cur") ) ;;
+    dns-check) COMPREPLY=( $(compgen -W "--config --certificate --domain --confirm-domain --execute" -- "$cur") ) ;;
     issue|deploy|release-smoke|renew|validate|plan|preflight) COMPREPLY=( $(compgen -W "cleanup --config --certificate --provider --confirm-test-target --cleanup-reference --state-dir --output-dir --input-dir --evidence --output --accept-tos --execute --force" -- "$cur") ) ;;
   esac
 }
@@ -225,7 +229,7 @@ complete -F _tlsferry_completion tlsferry
 `
 
 const fishCompletion = `complete -c tlsferry -f
-complete -c tlsferry -n '__fish_use_subcommand' -a 'auth completion deploy discover enroll help issue plan preflight release-smoke renew service validate version'
+complete -c tlsferry -n '__fish_use_subcommand' -a 'auth completion deploy discover dns-check enroll help issue plan preflight release-smoke renew service validate version'
 complete -c tlsferry -n '__fish_seen_subcommand_from auth' -a 'login status logout'
 complete -c tlsferry -n '__fish_seen_subcommand_from login' -a 'cloudflare tencent aliyun qiniu'
 complete -c tlsferry -n '__fish_seen_subcommand_from discover' -a 'cloud'
@@ -249,6 +253,8 @@ complete -c tlsferry -n '__fish_seen_subcommand_from completion' -l shell -a 'zs
 complete -c tlsferry -n '__fish_seen_subcommand_from service' -a 'install status run-now logs uninstall'
 complete -c tlsferry -l config -r
 complete -c tlsferry -l certificate -r
+complete -c tlsferry -n '__fish_seen_subcommand_from dns-check' -l domain -r
+complete -c tlsferry -n '__fish_seen_subcommand_from dns-check' -l confirm-domain -r
 complete -c tlsferry -l confirm-test-target -r
 complete -c tlsferry -l evidence -r
 complete -c tlsferry -l cleanup-reference -r

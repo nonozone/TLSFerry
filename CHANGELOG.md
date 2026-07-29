@@ -11,6 +11,7 @@ All notable changes to TLSFerry CE will be documented here. The project follows 
 - Read-only cloud CDN discovery and preview-first, one-domain explicit enrollment.
 - Operating-system credential storage, shell completion, retries, overlap locking, and renewal planning.
 - Native unattended scheduling through macOS launchd, Linux systemd user timers, and Windows Task Scheduler.
+- Preview-first online DNS control checks that create and immediately remove one guarded temporary ACME TXT record.
 - Cross-platform GitHub Releases, checksums, pinned release tooling, vulnerability scanning, and CE/Cloud boundary enforcement.
 
 ### Security

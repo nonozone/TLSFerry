@@ -37,6 +37,7 @@ go run ./cmd/tlsferry version
 go run ./cmd/tlsferry validate --config config.example.json
 go run ./cmd/tlsferry plan --config config.example.json
 go run ./cmd/tlsferry preflight --config config.example.json
+go run ./cmd/tlsferry dns-check --config config.example.json --certificate assets-example --domain assets.example.com
 go run ./cmd/tlsferry issue --config config.example.json --certificate assets-example --accept-tos
 go run ./cmd/tlsferry deploy --config config.example.json --certificate assets-example --provider tencent-cdn --execute
 go run ./cmd/tlsferry renew --config config.example.json --accept-tos --execute
@@ -190,6 +191,28 @@ tlsferry auth login tencent
 If DNS is hosted by Cloudflare while CDN is hosted by Tencent Cloud, use separate credential references in the same certificate entry: `keychain:CLOUDFLARE` under `issuer` and `keychain:TENCENTCLOUD` under `deployments`.
 
 The `tlsferry-cloud` provider is the public executor-side contract for a hosted control plane. It uses a short-lived job token to present and clean one delegated ACME challenge without exposing the control plane's authoritative DNS credentials. The client is implemented in CE, but the hosted endpoint is not included or generally available. See [the remote DNS challenge protocol](docs/remote-dns-protocol.md).
+
+Before the first production issuance, optionally verify that a direct DNS credential can both create and remove the selected ACME record. Preview is read-only:
+
+```bash
+tlsferry dns-check \
+  --config ~/.config/tlsferry/config.json \
+  --certificate assets-example \
+  --domain assets.example.com
+```
+
+After checking the displayed `_acme-challenge` name, authorize one random temporary TXT record and its immediate cleanup:
+
+```bash
+tlsferry dns-check \
+  --config ~/.config/tlsferry/config.json \
+  --certificate assets-example \
+  --domain assets.example.com \
+  --confirm-domain assets.example.com \
+  --execute
+```
+
+This supports direct Cloudflare, DNSPod, and Alibaba Cloud DNS credentials. It does not issue a certificate, change the CDN CNAME, or wait for public DNS propagation. Run it once per certificate domain or DNS zone that needs validation. A cleanup failure means the temporary TXT may still exist and must be removed in the DNS provider console before continuing. The `tlsferry-cloud` provider is intentionally excluded because its token is job-scoped; the hosted executor validates that lifecycle instead.
 
 ## Real-environment release smoke
 
@@ -347,10 +370,9 @@ Windows registers `TLSFerry Renewal` for the current interactive user. `tlsferry
 
 ## Planned milestones
 
-1. Add optional online DNS-control diagnostics before the first production issuance.
-2. Add renewable STS/OIDC/SSO and cloud instance-role credential adapters.
-3. Add webhook and email notification adapters.
-4. Add Alibaba Cloud OSS and Qiniu Kodo discovery/deployment where provider APIs support custom-domain certificate binding.
+1. Add renewable STS/OIDC/SSO and cloud instance-role credential adapters.
+2. Add webhook and email notification adapters.
+3. Add Alibaba Cloud OSS and Qiniu Kodo discovery/deployment where provider APIs support custom-domain certificate binding.
 
 ## Development
 
