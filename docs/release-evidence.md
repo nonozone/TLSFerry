@@ -1,15 +1,24 @@
 # TLSFerry CE release evidence
 
-This file records evidence for the first CE release candidate without weakening the requirements in `release-checklist.md`. A checkbox is complete only when its evidence can be reproduced from the named commit or real test environment.
+This file is the evidence matrix for a CE release candidate. It does not weaken the requirements in `release-checklist.md`. Complete the candidate fields during release review; a status is Pass only when its evidence can be reproduced from that exact commit or real test environment.
+
+## Candidate under review
+
+| Field | Value |
+| --- | --- |
+| Version | Pending (for example, `v0.1.0-rc.1`) |
+| Commit | Pending (record the full candidate commit SHA) |
+| Review date | Pending (UTC) |
+| Reviewer | Pending |
 
 ## Automated evidence
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
-| Clean CE/Cloud boundary | Pass | `internal/edition` tests and `docs/edition-boundary.md`; Cloud implementation remains in the separate private repository. |
-| Local release gate | Pass | `make release-check` on commit `899d5ace4e237ed5d356dc2feed33a2d2288496e`; formatting, tests, vet, `govulncheck`, versioned build, example validation, GoReleaser validation, six archives, and checksums passed. |
-| GitHub cross-platform CI | Pass | [CI run 30421097158](https://github.com/nonozone/TLSFerry/actions/runs/30421097158) on the same commit; verification plus Ubuntu, macOS, and Windows test/build jobs passed. |
-| Public repository metadata | Pass | Repository is public and reports Apache-2.0; `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, changelog, deployment guide, example config, and public protocol documentation are tracked. |
+| Clean CE/Cloud boundary | Pending | Run `internal/edition` tests on the candidate and review `docs/edition-boundary.md`; confirm Cloud implementation remains in the separate private repository. |
+| Local release gate | Pending | Run `make release-check` from a clean checkout of the candidate commit. Record the command, commit SHA, date, and sanitized output or artifact link. |
+| GitHub cross-platform CI | Pending | Record the CI run URL for the candidate commit. Verification plus Ubuntu, macOS, and Windows test/build jobs must pass. |
+| Public repository metadata | Pending | Confirm the candidate repository is public and reports Apache-2.0; verify `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, changelog, deployment guide, example config, and public protocol documentation are tracked. |
 
 ## Required real-environment evidence
 
