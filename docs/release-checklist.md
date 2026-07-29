@@ -43,10 +43,19 @@ Platform limitations must remain explicit: Linux headless operation may need use
 
 ## 4. Safe functional smoke test
 
+Run the credential-free functional gate locally:
+
+```bash
+make functional-smoke
+```
+
+The gate uses reserved `.invalid` domains, the Let's Encrypt staging directory, synthetic environment credentials, and an in-memory cloud inventory. It must make no network request. CI runs it on Ubuntu, macOS, and Windows.
+
 - `validate`, `plan`, and `preflight` pass with a synthetic or staging configuration.
 - Discovery is read-only.
 - Enrollment preview leaves the configuration unchanged.
 - Enrollment with `--execute` writes only the selected account-owned domain.
+- The post-enrollment configuration passes `preflight`, and neither successful output nor failure diagnostics expose credential values.
 - A Let's Encrypt staging issuance and one non-production provider deployment are tested with least-privilege credentials.
 - Logs and errors contain no credentials, certificate private keys, bearer tokens, or ACME challenge values.
 

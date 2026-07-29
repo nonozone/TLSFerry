@@ -37,6 +37,8 @@ jobs:
           cache: true
       - name: Test platform behavior
         run: go test ./... -count=1
+      - name: Exercise credential-free functional flow
+        run: make functional-smoke
       - name: Build platform binary
         run: go build -trimpath ./cmd/tlsferry
 

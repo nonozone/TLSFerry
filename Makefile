@@ -1,4 +1,4 @@
-.PHONY: help build install uninstall fmt fmt-check test vet security validate-example verify release-audit release-snapshot release-check clean
+.PHONY: help build install uninstall fmt fmt-check test functional-smoke vet security validate-example verify release-audit release-snapshot release-check clean
 
 BINARY ?= tlsferry
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -16,6 +16,7 @@ help:
 	@echo "  make install           Install into $(BINDIR)"
 	@echo "  make uninstall         Remove $(BINDIR)/$(BINARY)"
 	@echo "  make test              Run the Go test suite"
+	@echo "  make functional-smoke  Exercise the credential-free CE CLI release flow"
 	@echo "  make security          Scan reachable Go code for known vulnerabilities"
 	@echo "  make verify            Run formatting, tests, vet, security, build, and config checks"
 	@echo "  make release-audit     Audit candidate metadata and CE source boundaries"
@@ -42,6 +43,9 @@ fmt-check:
 test:
 	go test ./... -count=1
 
+functional-smoke:
+	go test -tags release_smoke ./internal/cli -run '^TestReleaseFunctionalSmoke$$' -count=1 -v
+
 vet:
 	go vet ./...
 
@@ -51,7 +55,7 @@ security:
 validate-example:
 	go run ./cmd/tlsferry validate --config config.example.json
 
-verify: fmt-check test vet security build validate-example
+verify: fmt-check test functional-smoke vet security build validate-example
 
 release-audit:
 	@go run ./internal/releaseaudit --version "$(AUDIT_VERSION)" --reviewer "$(AUDIT_REVIEWER)"

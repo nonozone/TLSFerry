@@ -325,6 +325,14 @@ make release-audit AUDIT_VERSION=v0.1.0-rc.1 AUDIT_REVIEWER=maintainer-name
 
 The report records the exact commit and keeps real DNS-01 issuance, provider deployment, GitHub metadata, CI, and tag publication as explicit manual gates.
 
+Exercise the complete credential-free CLI flow with reserved domains and synthetic credentials:
+
+```bash
+make functional-smoke
+```
+
+This checks validation, planning, preflight, read-only cloud discovery, enrollment preview, selected-domain-only persistence, and secret-safe output without contacting ACME, DNS, or a cloud API.
+
 Create a local release archive with [GoReleaser](https://goreleaser.com/) installed:
 
 ```bash
