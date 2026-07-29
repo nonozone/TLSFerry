@@ -19,6 +19,8 @@ jobs:
           cache: true
       - name: Verify CE
         run: make verify
+      - name: Audit CE release source
+        run: make release-audit AUDIT_VERSION=v0.0.0-ci AUDIT_REVIEWER=github-actions
 
   platform:
     name: Test ${{ matrix.os }}

@@ -317,6 +317,14 @@ The full release gate is documented in [docs/release-checklist.md](docs/release-
 make release-check
 ```
 
+To generate reproducible JSON for a specific candidate's source and edition-boundary review:
+
+```bash
+make release-audit AUDIT_VERSION=v0.1.0-rc.1 AUDIT_REVIEWER=maintainer-name
+```
+
+The report records the exact commit and keeps real DNS-01 issuance, provider deployment, GitHub metadata, CI, and tag publication as explicit manual gates.
+
 Create a local release archive with [GoReleaser](https://goreleaser.com/) installed:
 
 ```bash

@@ -19,7 +19,15 @@ Run from a clean tracked worktree:
 make release-check
 ```
 
-This runs formatting checks, all Go tests, `go vet`, fixed-version `govulncheck`, a versioned build, example configuration validation, GoReleaser schema validation, six cross-platform snapshot builds, archive creation, and checksums. It must leave tracked files unchanged.
+This first emits a JSON source audit, then runs formatting checks, all Go tests, `go vet`, fixed-version `govulncheck`, a versioned build, example configuration validation, GoReleaser schema validation, six cross-platform snapshot builds, archive creation, and checksums. It must leave tracked files unchanged.
+
+For a real candidate, record the exact semantic version and reviewer rather than the local defaults:
+
+```bash
+make release-audit AUDIT_VERSION=v0.1.0-rc.1 AUDIT_REVIEWER=maintainer-name
+```
+
+The audit records the full `HEAD` commit and UTC review time. It fails on tracked changes, non-ignored untracked sensitive files, tracked credentials/certificates/generated output, missing public release files, CE/Cloud boundary violations, or a non-Apache-2.0 license. Its `manual_gates` remain mandatory; the command cannot replace GitHub CI, repository visibility review, real staging issuance, a non-production provider deployment, or tag authorization.
 
 GitHub CI must also pass the full verification job and native test/build jobs on Ubuntu, macOS, and Windows for the same commit.
 

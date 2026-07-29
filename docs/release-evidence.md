@@ -20,6 +20,8 @@ This file is the evidence matrix for a CE release candidate. It does not weaken 
 | GitHub cross-platform CI | Pending | Record the CI run URL for the candidate commit. Verification plus Ubuntu, macOS, and Windows test/build jobs must pass. |
 | Public repository metadata | Pending | Confirm the candidate repository is public and reports Apache-2.0; verify `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, changelog, deployment guide, example config, and public protocol documentation are tracked. |
 
+Generate the local, credential-free part of this table with `make release-audit AUDIT_VERSION=<candidate> AUDIT_REVIEWER=<name>`. Preserve its JSON output with the candidate review. A passing audit records the exact commit and time, but deliberately lists CI, public repository metadata, real staging issuance, provider deployment, and tag authorization as manual gates.
+
 ## Required real-environment evidence
 
 These items remain release blockers. Unit tests, rendered scheduler definitions, and cross-compilation do not replace them.

@@ -21,6 +21,8 @@ jobs:
           cache: true
       - name: Run release checks
         run: make verify
+      - name: Audit release candidate source
+        run: make release-audit AUDIT_VERSION="$GITHUB_REF_NAME" AUDIT_REVIEWER="github-actions:$GITHUB_ACTOR"
       - name: Publish versioned binaries and checksums
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6
         with:
