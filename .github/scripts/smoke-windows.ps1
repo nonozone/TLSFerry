@@ -23,6 +23,8 @@ $env:APPDATA = Join-Path $testRoot "AppData\Roaming"
 
 try {
     Set-Location $repoRoot
+    Write-Output ("Windows version: " + [System.Environment]::OSVersion.VersionString)
+    Write-Output ("PowerShell version: " + $PSVersionTable.PSVersion.ToString())
     Invoke-Checked -Command "go" -Arguments @("build", "-trimpath", "-o", $binaryPath, "./cmd/tlsferry")
     Invoke-Checked -Command "go" -Arguments @("run", "./internal/releasetestfixture", "--root", $testRoot)
 

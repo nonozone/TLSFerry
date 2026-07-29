@@ -20,6 +20,9 @@ cleanup() {
 trap cleanup EXIT
 
 cd "$repo_root"
+uname -a
+grep '^PRETTY_NAME=' /etc/os-release
+systemctl --version | head -n 1
 go build -trimpath -o "$binary_path" ./cmd/tlsferry
 go run ./internal/releasetestfixture --root "$test_root"
 
