@@ -103,6 +103,68 @@ func TestReleaseSmokeExecutesExistingPathsAndWritesSanitizedPendingEvidence(t *t
 	}
 }
 
+func TestReleaseSmokeCleanupPreservesOriginalAndCreatesReviewRecord(t *testing.T) {
+	root := t.TempDir()
+	pendingPath := filepath.Join(root, "evidence.json")
+	readyPath := filepath.Join(root, "evidence.ready.json")
+	evidence := releaseSmokeEvidence{SchemaVersion: 1, GateStatus: "pending_cleanup"}
+	evidence.Deployment.Target = "staging.example.com"
+	evidence.Cleanup.Status = "pending"
+	if err := writeReleaseSmokeEvidence(pendingPath, evidence); err != nil {
+		t.Fatal(err)
+	}
+	originalNow := releaseSmokeNow
+	releaseSmokeNow = func() time.Time { return time.Date(2026, time.July, 29, 11, 0, 0, 0, time.UTC) }
+	t.Cleanup(func() { releaseSmokeNow = originalNow })
+	var stdout, stderr strings.Builder
+	code := Run([]string{"release-smoke", "cleanup", "--evidence", pendingPath, "--output", readyPath, "--confirm-test-target", "staging.example.com", "--cleanup-reference", "ticket/cleanup-42"}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("Run() code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+	pendingBytes, err := os.ReadFile(pendingPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(pendingBytes), `"gate_status": "pending_cleanup"`) {
+		t.Fatalf("pending evidence changed: %s", pendingBytes)
+	}
+	readyBytes, err := os.ReadFile(readyPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(readyBytes), `"gate_status": "ready_for_review"`) || !strings.Contains(string(readyBytes), `"status": "operator_confirmed"`) || !strings.Contains(string(readyBytes), `"reference": "ticket/cleanup-42"`) {
+		t.Fatalf("ready evidence = %s", readyBytes)
+	}
+}
+
+func TestReleaseSmokeCleanupRejectsWrongTargetUnsafeReferenceAndOverwrite(t *testing.T) {
+	root := t.TempDir()
+	pendingPath := filepath.Join(root, "evidence.json")
+	evidence := releaseSmokeEvidence{SchemaVersion: 1, GateStatus: "pending_cleanup"}
+	evidence.Deployment.Target = "staging.example.com"
+	evidence.Cleanup.Status = "pending"
+	if err := writeReleaseSmokeEvidence(pendingPath, evidence); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"wrong target", []string{"--confirm-test-target", "wrong.example.com", "--cleanup-reference", "request-1"}, "must exactly equal evidence target"},
+		{"unsafe reference", []string{"--confirm-test-target", "staging.example.com", "--cleanup-reference", "secret value with spaces"}, "safe reference characters"},
+		{"overwrite", []string{"--output", pendingPath, "--confirm-test-target", "staging.example.com", "--cleanup-reference", "request-1"}, "original record is preserved"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr strings.Builder
+			args := append([]string{"release-smoke", "cleanup", "--evidence", pendingPath}, test.args...)
+			if code := Run(args, &stdout, &stderr); code != 2 || !strings.Contains(stderr.String(), test.want) {
+				t.Fatalf("Run() code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+			}
+		})
+	}
+}
+
 func saveReleaseSmokeConfig(t *testing.T, directoryURL string) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "config.json")
@@ -282,6 +344,14 @@ func TestContextualHelpForDiscover(t *testing.T) {
 	}
 }
 
+func TestContextualHelpForReleaseSmokeCleanup(t *testing.T) {
+	var stdout, stderr strings.Builder
+	code := Run([]string{"help", "release-smoke"}, &stdout, &stderr)
+	if code != 0 || !strings.Contains(stdout.String(), "release-smoke cleanup") || !strings.Contains(stdout.String(), "ready_for_review") {
+		t.Fatalf("Run() code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+}
+
 func TestCompletionScriptsContainCommandsAndProviderValues(t *testing.T) {
 	for _, shell := range []string{"zsh", "bash", "fish"} {
 		var stdout, stderr strings.Builder
@@ -289,7 +359,7 @@ func TestCompletionScriptsContainCommandsAndProviderValues(t *testing.T) {
 		if code != 0 {
 			t.Fatalf("completion %s code = %d, stderr = %q", shell, code, stderr.String())
 		}
-		for _, expected := range []string{"discover", "enroll", "tencent", "aliyun", "qiniu", "cloudflare"} {
+		for _, expected := range []string{"discover", "enroll", "release-smoke", "cleanup", "cleanup-reference", "tencent", "aliyun", "qiniu", "cloudflare"} {
 			if !strings.Contains(stdout.String(), expected) {
 				t.Fatalf("completion %s omitted %q", shell, expected)
 			}

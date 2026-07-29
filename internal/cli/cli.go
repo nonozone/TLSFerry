@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"sort"
 	"strings"
@@ -101,6 +102,8 @@ func RunWithInput(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 
 const letsEncryptStagingDirectory = "https://acme-staging-v02.api.letsencrypt.org/directory"
 
+var releaseSmokeReferencePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$`)
+
 var releaseSmokePreflight = runPreflight
 var releaseSmokeIssue = runIssue
 var releaseSmokeDeploy = runDeploy
@@ -132,12 +135,17 @@ type releaseSmokeEvidence struct {
 		Reference string `json:"reference"`
 	} `json:"deployment"`
 	Cleanup struct {
-		Status       string `json:"status"`
-		Instructions string `json:"instructions"`
+		Status       string     `json:"status"`
+		Reference    string     `json:"reference,omitempty"`
+		ConfirmedAt  *time.Time `json:"confirmed_at,omitempty"`
+		Instructions string     `json:"instructions"`
 	} `json:"cleanup"`
 }
 
 func runReleaseSmoke(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "cleanup" {
+		return runReleaseSmokeCleanup(args[1:], stdout, stderr)
+	}
 	flags := flag.NewFlagSet("release-smoke", flag.ContinueOnError)
 	flags.SetOutput(stderr)
 	configPath := flags.String("config", "config.json", "path to an isolated release-smoke configuration")
@@ -234,6 +242,70 @@ func runReleaseSmoke(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+func runReleaseSmokeCleanup(args []string, stdout, stderr io.Writer) int {
+	flags := flag.NewFlagSet("release-smoke cleanup", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	evidencePath := flags.String("evidence", ".tlsferry/release-smoke/evidence.json", "pending cleanup evidence file")
+	outputPath := flags.String("output", "", "new ready-for-review evidence file")
+	confirmedTarget := flags.String("confirm-test-target", "", "exact cloud target whose prior binding was restored")
+	cleanupReference := flags.String("cleanup-reference", "", "sanitized provider request, ticket, or audit reference")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
+	if strings.TrimSpace(*evidencePath) == "" {
+		fmt.Fprintln(stderr, "release-smoke cleanup: --evidence is required")
+		return 2
+	}
+	if *outputPath == "" {
+		*outputPath = *evidencePath + ".ready.json"
+	}
+	if filepath.Clean(*outputPath) == filepath.Clean(*evidencePath) {
+		fmt.Fprintln(stderr, "release-smoke cleanup refused: --output must differ from --evidence so the original record is preserved")
+		return 2
+	}
+	encoded, err := os.ReadFile(*evidencePath)
+	if err != nil {
+		fmt.Fprintf(stderr, "release-smoke cleanup failed: read evidence: %v\n", err)
+		return 1
+	}
+	var evidence releaseSmokeEvidence
+	decoder := json.NewDecoder(strings.NewReader(string(encoded)))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&evidence); err != nil {
+		fmt.Fprintf(stderr, "release-smoke cleanup failed: decode evidence: %v\n", err)
+		return 1
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		fmt.Fprintln(stderr, "release-smoke cleanup failed: evidence contains trailing JSON content")
+		return 1
+	}
+	if evidence.SchemaVersion != 1 || evidence.GateStatus != "pending_cleanup" || evidence.Cleanup.Status != "pending" || strings.TrimSpace(evidence.Deployment.Target) == "" {
+		fmt.Fprintln(stderr, "release-smoke cleanup refused: evidence is not a schema v1 pending_cleanup record")
+		return 2
+	}
+	if *confirmedTarget != evidence.Deployment.Target {
+		fmt.Fprintf(stderr, "release-smoke cleanup refused: --confirm-test-target must exactly equal evidence target %q\n", evidence.Deployment.Target)
+		return 2
+	}
+	*cleanupReference = strings.TrimSpace(*cleanupReference)
+	if !releaseSmokeReferencePattern.MatchString(*cleanupReference) {
+		fmt.Fprintln(stderr, "release-smoke cleanup refused: --cleanup-reference must be 1-256 safe reference characters (letters, numbers, dot, underscore, colon, slash, or hyphen)")
+		return 2
+	}
+	confirmedAt := releaseSmokeNow().UTC()
+	evidence.GateStatus = "ready_for_review"
+	evidence.Cleanup.Status = "operator_confirmed"
+	evidence.Cleanup.Reference = *cleanupReference
+	evidence.Cleanup.ConfirmedAt = &confirmedAt
+	evidence.Cleanup.Instructions = "Operator reports that the previous binding was restored and the test certificate was removed. A release reviewer must verify the provider-side result before marking the release gate Pass."
+	if err := writeReleaseSmokeEvidence(*outputPath, evidence); err != nil {
+		fmt.Fprintf(stderr, "release-smoke cleanup failed: write ready evidence: %v\n", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "Operator-confirmed cleanup evidence saved to %s. Original evidence preserved at %s. Status is ready_for_review, not provider-verified Pass.\n", *outputPath, *evidencePath)
+	return 0
+}
+
 func releaseSmokeDeploymentReference(output string) string {
 	for _, line := range strings.Split(output, "\n") {
 		if value, ok := strings.CutPrefix(strings.TrimSpace(line), "reference:"); ok {
@@ -285,10 +357,17 @@ func writeReleaseSmokeEvidence(path string, evidence releaseSmokeEvidence) error
 		temporary.Close()
 		return err
 	}
+	if err := temporary.Sync(); err != nil {
+		temporary.Close()
+		return err
+	}
 	if err := temporary.Close(); err != nil {
 		return err
 	}
-	return os.Rename(temporaryPath, path)
+	if err := os.Link(temporaryPath, path); err != nil {
+		return fmt.Errorf("create evidence without overwriting an existing file: %w", err)
+	}
+	return nil
 }
 
 var newCloudScanner = discovery.NewScanner

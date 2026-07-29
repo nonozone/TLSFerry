@@ -216,6 +216,17 @@ tlsferry release-smoke \
 
 This runs the existing `preflight`, `issue`, and single-target `deploy` paths and writes `.tlsferry/release-smoke/evidence.json` with certificate domains, issue time, public-certificate SHA-256, provider target, and provider request reference. It never writes credentials, challenge values, certificate PEM, or the private key to evidence. The evidence deliberately remains `pending_cleanup`: restore the previous cloud certificate binding and remove the uploaded test certificate, then record the sanitized rollback result in `docs/release-evidence.md`. TLSFerry does not guess or automate provider rollback because replacing a live binding is an externally consequential operation.
 
+After restoring the previous binding and removing the uploaded test certificate, record the operator result without overwriting the original evidence:
+
+```bash
+tlsferry release-smoke cleanup \
+  --evidence .tlsferry/release-smoke/evidence.json \
+  --confirm-test-target staging.example.com \
+  --cleanup-reference ticket/cleanup-42
+```
+
+This creates `evidence.json.ready.json` with `operator_confirmed` cleanup and `ready_for_review` gate status. The reference must be a sanitized provider request ID, ticket ID, or audit reference—not a token or credential. The status deliberately does not say Pass: a release reviewer must still compare the record with the provider-side state.
+
 Use an isolated test configuration, test hostname, state directory, and least-privilege credentials. A typed target confirmation is a guardrail, not proof that a hostname is non-production.
 
 ## Issuing a certificate

@@ -185,7 +185,7 @@ _tlsferry() {
       _arguments '--config[configuration file]:file:_files' '--hour[daily hour]:hour' '--minute[daily minute]:minute' '--accept-tos[accept ACME terms]' '--execute[allow external operations]'
       ;;
     issue|deploy|release-smoke|renew|validate|plan|preflight)
-      _arguments '--config[configuration file]:file:_files' '--certificate[certificate name]:name' '--provider[deployment provider]:provider:(tencent-cdn tencent-cos aliyun-cdn qiniu-cdn)' '--confirm-test-target[exact non-production deployment target]:domain' '--state-dir[state directory]:directory:_directories' '--output-dir[certificate output directory]:directory:_directories' '--input-dir[certificate input directory]:directory:_directories' '--evidence[sanitized evidence file]:file:_files' '--accept-tos[accept ACME terms]' '--execute[allow external operations]' '--force[force renewal]'
+      _arguments '1:action:(cleanup)' '--config[configuration file]:file:_files' '--certificate[certificate name]:name' '--provider[deployment provider]:provider:(tencent-cdn tencent-cos aliyun-cdn qiniu-cdn)' '--confirm-test-target[exact non-production deployment target]:domain' '--cleanup-reference[sanitized cleanup reference]:reference' '--state-dir[state directory]:directory:_directories' '--output-dir[certificate output directory]:directory:_directories' '--input-dir[certificate input directory]:directory:_directories' '--evidence[sanitized evidence file]:file:_files' '--output[new evidence file]:file:_files' '--accept-tos[accept ACME terms]' '--execute[allow external operations]' '--force[force renewal]'
       ;;
   esac
 }
@@ -207,7 +207,7 @@ const bashCompletion = `_tlsferry_completion() {
     --provider) COMPREPLY=( $(compgen -W "$cloud_providers tencent-cdn tencent-cos aliyun-cdn qiniu-cdn" -- "$cur") ); return ;;
     --format) COMPREPLY=( $(compgen -W "table json" -- "$cur") ); return ;;
 	--shell) COMPREPLY=( $(compgen -W "zsh bash fish" -- "$cur") ); return ;;
-    --config|--state-dir|--output-dir|--input-dir|--evidence) COMPREPLY=( $(compgen -f -- "$cur") ); return ;;
+    --config|--state-dir|--output-dir|--input-dir|--evidence|--output) COMPREPLY=( $(compgen -f -- "$cur") ); return ;;
   esac
   case "$command" in
     auth)
@@ -218,7 +218,7 @@ const bashCompletion = `_tlsferry_completion() {
     enroll) COMPREPLY=( $(compgen -W "cloud --provider --domain --name --email --dns-provider --dns-credential --credential --config --directory-url --execute" -- "$cur") ) ;;
     completion) COMPREPLY=( $(compgen -W "zsh bash fish install --shell" -- "$cur") ) ;;
     service) COMPREPLY=( $(compgen -W "install status run-now logs uninstall --config --hour --minute --accept-tos --execute" -- "$cur") ) ;;
-    issue|deploy|release-smoke|renew|validate|plan|preflight) COMPREPLY=( $(compgen -W "--config --certificate --provider --confirm-test-target --state-dir --output-dir --input-dir --evidence --accept-tos --execute --force" -- "$cur") ) ;;
+    issue|deploy|release-smoke|renew|validate|plan|preflight) COMPREPLY=( $(compgen -W "cleanup --config --certificate --provider --confirm-test-target --cleanup-reference --state-dir --output-dir --input-dir --evidence --output --accept-tos --execute --force" -- "$cur") ) ;;
   esac
 }
 complete -F _tlsferry_completion tlsferry
@@ -241,6 +241,7 @@ complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l email -r
 complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l dns-credential -r
 complete -c tlsferry -n '__fish_seen_subcommand_from enroll' -l directory-url -r
 complete -c tlsferry -n '__fish_seen_subcommand_from release-smoke' -l provider -a 'tencent-cdn tencent-cos aliyun-cdn qiniu-cdn'
+complete -c tlsferry -n '__fish_seen_subcommand_from release-smoke' -a 'cleanup'
 complete -c tlsferry -n '__fish_seen_subcommand_from release-smoke' -l state-dir -r
 complete -c tlsferry -n '__fish_seen_subcommand_from release-smoke' -l output-dir -r
 complete -c tlsferry -n '__fish_seen_subcommand_from completion' -a 'zsh bash fish install'
@@ -250,6 +251,8 @@ complete -c tlsferry -l config -r
 complete -c tlsferry -l certificate -r
 complete -c tlsferry -l confirm-test-target -r
 complete -c tlsferry -l evidence -r
+complete -c tlsferry -l cleanup-reference -r
+complete -c tlsferry -l output -r
 complete -c tlsferry -l profile -r
 complete -c tlsferry -l accept-tos
 complete -c tlsferry -l execute

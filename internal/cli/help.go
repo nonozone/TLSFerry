@@ -58,8 +58,9 @@ Checks expiry, renews due certificates, and deploys them. Safety flags are manda
 	"release-smoke": `Usage:
   tlsferry release-smoke --config FILE --certificate NAME --provider PROVIDER [--state-dir DIR] [--output-dir DIR] [--evidence FILE]
   tlsferry release-smoke --config FILE --certificate NAME --provider PROVIDER --confirm-test-target DOMAIN --accept-tos --execute
+  tlsferry release-smoke cleanup --evidence FILE --confirm-test-target DOMAIN --cleanup-reference REFERENCE [--output FILE]
 
-Previews or runs the real CE release smoke against Let's Encrypt staging and one explicitly confirmed non-production cloud target. Production ACME directories are refused. Successful execution writes sanitized JSON evidence with a pending cleanup gate; provider rollback/removal remains mandatory.`,
+Previews or runs the real CE release smoke against Let's Encrypt staging and one explicitly confirmed non-production cloud target. Production ACME directories are refused. Successful execution writes sanitized JSON evidence with a pending cleanup gate; provider rollback/removal remains mandatory. The cleanup mode preserves the original evidence and creates an operator-confirmed ready_for_review record without claiming provider-side verification.`,
 	"service": `Usage:
   tlsferry service install --config FILE [--hour HOUR] [--minute MINUTE] --accept-tos --execute
   tlsferry service status
