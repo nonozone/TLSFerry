@@ -6,26 +6,35 @@ This file is the evidence matrix for a CE release candidate. It does not weaken 
 
 | Field | Value |
 | --- | --- |
-| Version | Pending (for example, `v0.1.0-rc.1`) |
-| Commit | Pending (record the full candidate commit SHA) |
-| Review date | Pending (UTC) |
-| Reviewer | Pending |
+| Version | Unversioned CE candidate (no `v*` tag authorized or created) |
+| Commit | `5a98a8fe419a9255ee3f0ed565825fbffe80997d` |
+| Review date | `2026-07-29T12:03:25Z` |
+| Reviewer | Local release audit (`local`) plus GitHub Actions |
 
 ## Automated evidence
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
-| Clean CE/Cloud boundary | Pending | Run `internal/edition` tests on the candidate and review `docs/edition-boundary.md`; confirm Cloud implementation remains in the separate private repository. |
-| Local release gate | Pending | Run `make release-check` from a clean checkout of the candidate commit. Record the command, commit SHA, date, and sanitized output or artifact link. |
-| GitHub cross-platform CI | Pending | Record the CI run URL for the candidate commit. Verification plus Ubuntu, macOS, and Windows test/build jobs must pass. |
-| Release archive integrity | Pass | Commit `37c1a885b0b150e75a26ae7bc086d9bc7a6ecda2` passed the local release gate and native archive smoke on Ubuntu, macOS, and Windows; see the reproducible evidence below. |
-| Public repository metadata | Pass | Verified against commit `41c0604c14be394c6db5aa86cfca95e87d14b211`: GitHub reports a public Apache-2.0 repository, all required public files are tracked, and the repository security/reporting settings below are enabled. |
+| Clean CE/Cloud boundary | Pass | The candidate passed `make release-audit` and all `internal/edition` tests. The audit found no Cloud product implementation in CE; the only crossing point remains the public, versioned remote DNS protocol. |
+| Local release gate | Pass | `env GOCACHE=/private/tmp/tlsferry-go-cache make release-check` passed from the clean candidate commit at `2026-07-29T12:03:25Z`; see the candidate evidence below. |
+| GitHub cross-platform CI | Pass | [CI run 30449109795](https://github.com/nonozone/TLSFerry/actions/runs/30449109795) passed for the exact candidate commit, including verification, Ubuntu, macOS, Windows, systemd, and Task Scheduler jobs. |
+| Release archive integrity | Pass | The candidate passed local six-platform snapshot archive verification; the exact commit also passed native archive smoke on Ubuntu, macOS, and Windows in CI. See the candidate and reproducible archive evidence below. |
+| Public repository metadata | Pass | Verified for the candidate review: GitHub reports a public, active Apache-2.0 repository with `main` as its default branch. Required source files and security settings are covered by the evidence below. |
 
 Generate the local, credential-free part of this table with `make release-audit AUDIT_VERSION=<candidate> AUDIT_REVIEWER=<name>`. Preserve its JSON output with the candidate review. A passing audit records the exact commit and time, but deliberately lists CI, public repository metadata, real staging issuance, provider deployment, and tag authorization as manual gates.
 
+### Current candidate automated evidence
+
+- Date and source: `2026-07-29T12:03:25Z`, commit `5a98a8fe419a9255ee3f0ed565825fbffe80997d`, and [CI run 30449109795](https://github.com/nonozone/TLSFerry/actions/runs/30449109795).
+- Local gate: `env GOCACHE=/private/tmp/tlsferry-go-cache make release-check` passed from a clean tracked worktree. It ran the source and edition audit, all Go tests, credential-free functional smoke, `go vet`, `govulncheck v1.6.0`, both example configuration validations, GoReleaser configuration validation, six-platform snapshot builds, checksum verification, archive-content checks, and the native packaged-binary version smoke.
+- Vulnerability result: `govulncheck` reported zero reachable vulnerabilities and zero vulnerabilities in imported packages. It reported one module-only advisory that is not called by TLSFerry, consistent with the dependency evidence below.
+- Archive result: Linux, macOS, and Windows archives for amd64 and arm64 were present with checksums. Every archive contained `LICENSE`, `README.md`, `config.example.json`, `config.release-smoke.example.json`, and the platform binary; the native archived binary reported `TLSFerry 0.0.0-SNAPSHOT-5a98a8f`.
+- Exact-commit CI: [verify 90566607768](https://github.com/nonozone/TLSFerry/actions/runs/30449109795/job/90566607768), [Ubuntu 90566607890](https://github.com/nonozone/TLSFerry/actions/runs/30449109795/job/90566607890), [macOS 90566607857](https://github.com/nonozone/TLSFerry/actions/runs/30449109795/job/90566607857), [Windows 90566607864](https://github.com/nonozone/TLSFerry/actions/runs/30449109795/job/90566607864), [systemd 90566607883](https://github.com/nonozone/TLSFerry/actions/runs/30449109795/job/90566607883), and [Task Scheduler 90566607872](https://github.com/nonozone/TLSFerry/actions/runs/30449109795/job/90566607872) all completed successfully.
+- Publication state: the local repository has no tags and GitHub has no Releases. This records evidence only and does not authorize a tag or publication.
+
 ### Public repository metadata and security evidence
 
-- Date and source: `2026-07-29`, commit `41c0604c14be394c6db5aa86cfca95e87d14b211`, [public repository](https://github.com/nonozone/TLSFerry), and [CI run 30433444115](https://github.com/nonozone/TLSFerry/actions/runs/30433444115).
+- Date and source: metadata refreshed on `2026-07-29` while reviewing commit `5a98a8fe419a9255ee3f0ed565825fbffe80997d`; see the [public repository](https://github.com/nonozone/TLSFerry) and [CI run 30449109795](https://github.com/nonozone/TLSFerry/actions/runs/30449109795).
 - GitHub metadata: the repository API reported `visibility: public`, default branch `main`, and SPDX license `Apache-2.0`. Topics are `acme`, `certificate-automation`, `certificate-management`, `dns-01`, `golang`, `letsencrypt`, `self-hosted`, and `tls`.
 - Public source files: Git confirmed that `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, README, the deployment guide, example configuration, edition boundary, release checklist/evidence, and remote DNS protocol are tracked.
 - Security reporting: private vulnerability reporting is enabled, so the **Security → Report a vulnerability** route documented in `SECURITY.md` is available. Dependabot vulnerability alerts and security updates, secret scanning, and secret-scanning push protection are enabled.
@@ -108,4 +117,4 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 
 ## Publication boundary
 
-No release tag has been pushed and no GitHub Release exists. Creating `v0.1.0-rc.1` remains a deliberate maintainer action after all pending evidence above is complete. Do not reinterpret a green automated gate as permission to publish.
+As verified during this candidate review, no release tag has been pushed and no GitHub Release exists. Choosing and creating a version such as `v0.1.0-rc.1` remains a deliberate maintainer action after all pending real-environment evidence above is complete. Do not reinterpret a green automated gate as permission to publish.
