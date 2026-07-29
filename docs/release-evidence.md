@@ -32,6 +32,14 @@ Generate the local, credential-free part of this table with `make release-audit 
 - Workflow permissions: GitHub's default workflow permission is read-only and Actions cannot approve pull requests. Release actions are pinned to full commit SHAs; the source audit enforces a read-only verification job, a dependent publication job with the only `contents: write` grant, non-persisted checkout credentials, and a single explicit `GITHUB_TOKEN` handoff.
 - Maintainer policy: `main` currently has no GitHub branch-protection rule, preserving the current single-maintainer direct-push workflow. This is not release authorization: pushing a `v*` tag remains a separate deliberate action, and branch protection must be reconsidered before granting additional maintainers write access.
 
+### Dependency vulnerability response evidence
+
+- Discovery: enabling GitHub vulnerability alerts exposed [Dependabot alert 1](https://github.com/nonozone/TLSFerry/security/dependabot/1), CVE-2026-40611 / GHSA-qqx8-2xmm-jrv8, against the direct `github.com/go-acme/lego/v4 v4.33.0` dependency. The advisory rates the HTTP-01 webroot path traversal High (CVSS 8.8) and identifies `v4.34.0` as the first patched version.
+- Fix: commit `a3ff15fb0777841d6059c32f87feb65ef6a55352` upgrades lego to `v4.34.0` and accepts the patched module's required indirect dependency versions. TLSFerry CE exposes DNS-01 rather than HTTP-01 issuance, but the vulnerable implementation is still removed from the release dependency graph instead of being dismissed as unreachable.
+- Local verification: `make verify`, `go mod verify`, and `go list -m github.com/go-acme/lego/v4` passed. Verbose `govulncheck v1.6.0` reported zero symbol-level and package-level vulnerabilities. Its only remaining module notice is GO-2026-5932 for the unmaintained `golang.org/x/crypto/openpgp` package; `go mod why` confirms that the main module does not need that package and no fixed version exists.
+- GitHub verification: [Dependency Graph run 30438798736](https://github.com/nonozone/TLSFerry/actions/runs/30438798736) passed, and GitHub changed alert 1 to `fixed` at `2026-07-29T09:15:44Z` without dismissal.
+- Cross-platform CI: [run 30438806132](https://github.com/nonozone/TLSFerry/actions/runs/30438806132) passed verification plus [Ubuntu 90532860052](https://github.com/nonozone/TLSFerry/actions/runs/30438806132/job/90532860052), [macOS 90532860063](https://github.com/nonozone/TLSFerry/actions/runs/30438806132/job/90532860063), [Windows 90532860092](https://github.com/nonozone/TLSFerry/actions/runs/30438806132/job/90532860092), systemd, and Task Scheduler jobs.
+
 ## Required real-environment evidence
 
 These items remain release blockers. Unit tests, rendered scheduler definitions, and cross-compilation do not replace them.
