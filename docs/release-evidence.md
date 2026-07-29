@@ -34,9 +34,19 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 
 | Functional smoke | Status | Evidence required |
 | --- | --- | --- |
-| Credential-free CLI flow | Pending | Run `make functional-smoke` on the exact candidate and record the CI URL. It must cover read-only discovery, preview immutability, selected-domain-only enrollment, post-enrollment preflight, and secret-safe diagnostics. |
+| Credential-free CLI flow | Pass | See the evidence below for the exact commit, local release gate, three native CI jobs, no-network isolation, read-only assertions, selected-domain-only enrollment, and credential-output checks. |
 | Let's Encrypt staging DNS-01 issuance | Pending | Dedicated test hostname, staging directory, sanitized command result, certificate metadata, and confirmation that no secret or challenge value entered logs. |
 | Non-production provider deployment | Pending | Least-privilege test credential, target resource, sanitized provider request id, and rollback/removal result. |
+
+### Credential-free CLI functional evidence
+
+- Date and source: `2026-07-29`, commit `e5ece56dbfa67b4269e60b34ad51a5f0635be283`, [CI run 30431046013](https://github.com/nonozone/TLSFerry/actions/runs/30431046013).
+- Native jobs: [Ubuntu 90508122872](https://github.com/nonozone/TLSFerry/actions/runs/30431046013/job/90508122872), [macOS 90508122924](https://github.com/nonozone/TLSFerry/actions/runs/30431046013/job/90508122924), and [Windows 90508122856](https://github.com/nonozone/TLSFerry/actions/runs/30431046013/job/90508122856) each passed `make functional-smoke` and the platform build.
+- Local gate: `make release-check` passed from the clean source commit. It included the functional smoke, all Go tests, vet, a fixed-version vulnerability scan with zero reachable vulnerabilities, example validation, GoReleaser configuration validation, six snapshot archives, and checksums.
+- Isolation: the smoke used reserved `.invalid` domains, the Let's Encrypt staging directory, synthetic environment credential values, and an in-memory authorized Tencent CDN inventory. It made no ACME, DNS, credential-store, or cloud API request.
+- Read-only behavior: byte-for-byte configuration comparisons proved that `validate`, `plan`, `preflight`, JSON discovery, and enrollment preview did not modify the configuration.
+- Enrollment behavior: `--execute` preserved the existing certificate, appended exactly one certificate for the selected account-owned CDN domain, excluded the second unselected inventory domain, and produced a configuration that passed a second `preflight`.
+- Secret safety: the test checked all command output against every synthetic credential value. Failure diagnostics redact those values before writing test output.
 
 ### macOS launchd user-agent evidence
 
