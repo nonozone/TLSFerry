@@ -311,6 +311,12 @@ make verify
 
 Source builds require Go 1.25 or newer. `make verify` includes a fixed-version reachable-code vulnerability scan.
 
+The full release gate is documented in [docs/release-checklist.md](docs/release-checklist.md). From a clean tracked worktree, run:
+
+```bash
+make release-check
+```
+
 Create a local release archive with [GoReleaser](https://goreleaser.com/) installed:
 
 ```bash

@@ -9,6 +9,7 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -31,7 +32,7 @@ func TestStoreSave(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if keyInfo.Mode().Perm() != 0o600 {
+	if runtime.GOOS != "windows" && keyInfo.Mode().Perm() != 0o600 {
 		t.Fatalf("private key mode = %o, want 600", keyInfo.Mode().Perm())
 	}
 	fullchain, err := os.ReadFile(paths.FullChain)
