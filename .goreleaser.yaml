@@ -32,6 +32,7 @@ archives:
       - LICENSE
       - README.md
       - config.example.json
+      - config.release-smoke.example.json
 
 checksum:
   name_template: checksums.txt

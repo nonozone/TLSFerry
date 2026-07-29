@@ -25,6 +25,7 @@ var requiredPublicFiles = []string{
 	"README.md",
 	"SECURITY.md",
 	"config.example.json",
+	"config.release-smoke.example.json",
 	"deploy/README.md",
 	"docs/edition-boundary.md",
 	"docs/release-checklist.md",

@@ -55,6 +55,7 @@ security:
 
 validate-example:
 	go run ./cmd/tlsferry validate --config config.example.json
+	go run ./cmd/tlsferry validate --config config.release-smoke.example.json
 
 verify: fmt-check test functional-smoke vet security build validate-example
 

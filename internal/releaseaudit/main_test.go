@@ -38,15 +38,16 @@ func TestParseGitStatusRejectsTrackedChangesAndSensitiveUntrackedFiles(t *testin
 
 func TestSensitiveTrackedPath(t *testing.T) {
 	tests := map[string]bool{
-		"config.example.json":        false,
-		"config.json":                true,
-		"nested/config.json":         true,
-		"certificates/site.pem":      true,
-		"certificates/site.key":      true,
-		"certificates/site.p12":      true,
-		".tlsferry/state.json":       true,
-		"dist/tlsferry_linux.tar.gz": true,
-		"internal/config/config.go":  false,
+		"config.example.json":               false,
+		"config.release-smoke.example.json": false,
+		"config.json":                       true,
+		"nested/config.json":                true,
+		"certificates/site.pem":             true,
+		"certificates/site.key":             true,
+		"certificates/site.p12":             true,
+		".tlsferry/state.json":              true,
+		"dist/tlsferry_linux.tar.gz":        true,
+		"internal/config/config.go":         false,
 	}
 	for path, want := range tests {
 		if got := sensitiveTrackedPath(path); got != want {

@@ -1,0 +1,29 @@
+{
+  "renew_before": "720h",
+  "certificates": [
+    {
+      "name": "staging-cdn",
+      "domains": [
+        "staging.example.com"
+      ],
+      "issuer": {
+        "type": "acme",
+        "email": "ops@example.com",
+        "directory_url": "https://acme-staging-v02.api.letsencrypt.org/directory",
+        "challenge": "dns-01",
+        "dns_provider": "cloudflare",
+        "credential": "keychain:CLOUDFLARE_STAGING"
+      },
+      "deployments": [
+        {
+          "provider": "tencent-cdn",
+          "target": "staging.example.com",
+          "credential": "keychain:TENCENTCLOUD_STAGING",
+          "options": {
+            "billing": "on"
+          }
+        }
+      ]
+    }
+  ]
+}

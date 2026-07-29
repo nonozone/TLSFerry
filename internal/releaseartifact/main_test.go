@@ -47,15 +47,17 @@ func TestExpectedArchiveNames(t *testing.T) {
 
 func TestValidateArchiveEntries(t *testing.T) {
 	source := map[string][]byte{
-		"LICENSE":             []byte("license"),
-		"README.md":           []byte("readme"),
-		"config.example.json": []byte("config"),
+		"LICENSE":                           []byte("license"),
+		"README.md":                         []byte("readme"),
+		"config.example.json":               []byte("config"),
+		"config.release-smoke.example.json": []byte("smoke config"),
 	}
 	entries := map[string]archiveEntry{
-		"LICENSE":             {Data: []byte("license")},
-		"README.md":           {Data: []byte("readme")},
-		"config.example.json": {Data: []byte("config")},
-		"tlsferry":            {Data: []byte("binary"), Mode: 0o755},
+		"LICENSE":                           {Data: []byte("license")},
+		"README.md":                         {Data: []byte("readme")},
+		"config.example.json":               {Data: []byte("config")},
+		"config.release-smoke.example.json": {Data: []byte("smoke config")},
+		"tlsferry":                          {Data: []byte("binary"), Mode: 0o755},
 	}
 	binary, err := validateArchiveEntries(entries, "tlsferry", source, true)
 	if err != nil || string(binary) != "binary" {
@@ -63,9 +65,12 @@ func TestValidateArchiveEntries(t *testing.T) {
 	}
 
 	for name, mutate := range map[string]func(map[string]archiveEntry){
+		"missing public file": func(value map[string]archiveEntry) {
+			delete(value, "config.release-smoke.example.json")
+		},
 		"extra file": func(value map[string]archiveEntry) { value["private.key"] = archiveEntry{Data: []byte("secret")} },
 		"changed public file": func(value map[string]archiveEntry) {
-			value["README.md"] = archiveEntry{Data: []byte("changed")}
+			value["config.release-smoke.example.json"] = archiveEntry{Data: []byte("changed")}
 		},
 		"non-executable binary": func(value map[string]archiveEntry) {
 			value["tlsferry"] = archiveEntry{Data: []byte("binary"), Mode: fs.FileMode(0o644)}

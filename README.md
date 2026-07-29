@@ -40,7 +40,7 @@ go run ./cmd/tlsferry preflight --config config.example.json
 go run ./cmd/tlsferry issue --config config.example.json --certificate assets-example --accept-tos
 go run ./cmd/tlsferry deploy --config config.example.json --certificate assets-example --provider tencent-cdn --execute
 go run ./cmd/tlsferry renew --config config.example.json --accept-tos --execute
-go run ./cmd/tlsferry release-smoke --config staging-config.json --certificate staging-cdn --provider tencent-cdn
+go run ./cmd/tlsferry release-smoke --config config.release-smoke.example.json --certificate staging-cdn --provider tencent-cdn
 go run ./cmd/tlsferry auth login cloudflare
 go run ./cmd/tlsferry auth login tencent
 go run ./cmd/tlsferry completion zsh
@@ -106,7 +106,7 @@ assets-example
 - Issuers and deployment providers remain separate so one certificate can be delivered to several cloud platforms.
 - Deployments are optional while using issuance-only workflows.
 
-See [`config.example.json`](config.example.json) for the current schema.
+See [`config.example.json`](config.example.json) for the current schema. The guarded real-environment release gate has a separate [`config.release-smoke.example.json`](config.release-smoke.example.json) template.
 
 ## Cloud authentication
 
@@ -193,11 +193,21 @@ The `tlsferry-cloud` provider is the public executor-side contract for a hosted 
 
 ## Real-environment release smoke
 
-Before a CE release, validate one disposable hostname and one non-production cloud target with the guarded orchestration command. The configuration must use the exact Let's Encrypt staging directory; the command refuses the production directory. Its default mode only prints the selected DNS and cloud path:
+Before a CE release, validate one disposable hostname and one non-production cloud target with the guarded orchestration command. Start by copying the tracked template to a private path. `example.com` is only a reserved placeholder: replace the domain, target, and email with a test hostname you own before execution. Keep the exact Let's Encrypt staging directory; the command refuses the production directory.
+
+```bash
+mkdir -p ~/.config/tlsferry
+cp config.release-smoke.example.json ~/.config/tlsferry/release-smoke.json
+# Edit ~/.config/tlsferry/release-smoke.json before continuing.
+tlsferry auth login cloudflare --profile CLOUDFLARE_STAGING
+tlsferry auth login tencent --profile TENCENTCLOUD_STAGING
+```
+
+The default mode only prints the selected DNS and cloud path:
 
 ```bash
 tlsferry release-smoke \
-  --config staging-config.json \
+  --config ~/.config/tlsferry/release-smoke.json \
   --certificate staging-cdn \
   --provider tencent-cdn
 ```
@@ -206,7 +216,7 @@ After reviewing the preview, explicitly type the configured test target:
 
 ```bash
 tlsferry release-smoke \
-  --config staging-config.json \
+  --config ~/.config/tlsferry/release-smoke.json \
   --certificate staging-cdn \
   --provider tencent-cdn \
   --confirm-test-target staging.example.com \

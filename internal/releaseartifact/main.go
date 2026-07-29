@@ -27,7 +27,7 @@ import (
 
 const maxArchiveEntrySize = 128 << 20
 
-var bundledPublicFiles = []string{"LICENSE", "README.md", "config.example.json"}
+var bundledPublicFiles = []string{"LICENSE", "README.md", "config.example.json", "config.release-smoke.example.json"}
 
 type releaseMetadata struct {
 	ProjectName string `json:"project_name"`

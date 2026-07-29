@@ -68,7 +68,7 @@ The CLI currently defaults to paths relative to the working directory, so produc
 
 ## Configuration and secrets
 
-`config.example.json` is the canonical schema example. Copy it to a private location; `config.json` is ignored by Git.
+`config.example.json` is the canonical schema example. `config.release-smoke.example.json` is the isolated Let's Encrypt staging and Tencent CDN release-gate template. Copy either template to a private location; `config.json` is ignored by Git. The smoke template's `example.com` values are placeholders and must be replaced with a test hostname you own, together with the operator email. Store its separate credentials with `tlsferry auth login cloudflare --profile CLOUDFLARE_STAGING` and `tlsferry auth login tencent --profile TENCENTCLOUD_STAGING`.
 
 - `keychain:PROFILE` is preferred for desktop schedulers.
 - `env:PROFILE` is intended for servers and CI. Environment files are not created or managed by this repository.
@@ -91,7 +91,7 @@ make release-snapshot
 make artifact-smoke
 ```
 
-The artifact smoke verifies all six checksums and archive manifests, compares bundled public files with the source commit, and executes the current platform's archived binary to confirm its embedded version before installation.
+The artifact smoke verifies all six checksums and archive manifests, compares the four bundled public files with the source commit, and executes the current platform's archived binary to confirm its embedded version before installation.
 
 ## Install and startup contract
 
