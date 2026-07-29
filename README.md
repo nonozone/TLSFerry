@@ -9,7 +9,7 @@ The project can issue real certificates through ACME DNS-01 and deploy them to T
 - **TLSFerry CE** is this Apache-2.0 repository. It runs on infrastructure controlled by the user, keeps cloud credentials local, and provides the CLI, DNS providers, renewal scheduling, discovery, and multi-cloud certificate delivery.
 - **TLSFerry Cloud** is the planned managed service. Its hosted DNS validation, account system, billing, orchestration, and operations control plane are separate from this repository.
 
-The shared certificate and provider behavior remains in CE. The commercial service sells hosted operation and reduced maintenance rather than a different certificate format or a deliberately broken community build.
+The shared certificate and provider behavior remains in CE. The commercial service sells hosted operation and reduced maintenance rather than a different certificate format or a deliberately broken community build. The enforced source and protocol boundary is documented in [docs/edition-boundary.md](docs/edition-boundary.md).
 
 ## Installation
 
@@ -296,6 +296,8 @@ Linux installs `tlsferry-renew.service` and `tlsferry-renew.timer` under the cur
 ```bash
 make verify
 ```
+
+Source builds require Go 1.25 or newer. `make verify` includes a fixed-version reachable-code vulnerability scan.
 
 Create a local release archive with [GoReleaser](https://goreleaser.com/) installed:
 

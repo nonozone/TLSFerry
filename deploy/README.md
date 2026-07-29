@@ -19,7 +19,7 @@ TLSFerry Cloud is not deployed from this repository. The `tlsferry-cloud` DNS pr
 
 ## Prerequisites
 
-- A supported release archive, or Go 1.24+ for a source build.
+- A supported release archive, or Go 1.25+ for a source build.
 - A writable configuration directory and a private state directory.
 - Least-privilege credentials in Keychain, Credential Manager, Secret Service, or an isolated service environment.
 - DNS and cloud API connectivity during renewal.

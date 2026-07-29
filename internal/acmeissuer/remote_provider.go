@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"time"
 
@@ -18,6 +19,8 @@ import (
 )
 
 const remoteDNSProtocolVersion = "1"
+
+var remoteErrorCodePattern = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}$`)
 
 type remoteChallengeRequest struct {
 	Domain        string `json:"domain"`
@@ -111,19 +114,25 @@ func (p *remoteDNSProvider) send(method, path string, payload any) error {
 		return nil
 	}
 	message, _ := io.ReadAll(io.LimitReader(response.Body, 4096))
-	return &remoteDNSStatusError{StatusCode: response.StatusCode, Message: strings.TrimSpace(string(message))}
+	var envelope struct {
+		Code string `json:"code"`
+	}
+	if json.Unmarshal(message, &envelope) != nil || !remoteErrorCodePattern.MatchString(envelope.Code) {
+		envelope.Code = ""
+	}
+	return &remoteDNSStatusError{StatusCode: response.StatusCode, Code: envelope.Code}
 }
 
 type remoteDNSStatusError struct {
 	StatusCode int
-	Message    string
+	Code       string
 }
 
 func (e *remoteDNSStatusError) Error() string {
-	if e.Message == "" {
+	if e.Code == "" {
 		return fmt.Sprintf("remote DNS control plane returned HTTP %d", e.StatusCode)
 	}
-	return fmt.Sprintf("remote DNS control plane returned HTTP %d: %s", e.StatusCode, e.Message)
+	return fmt.Sprintf("remote DNS control plane returned HTTP %d (%s)", e.StatusCode, e.Code)
 }
 
 func challengeResourcePath(fqdn, token string) string {

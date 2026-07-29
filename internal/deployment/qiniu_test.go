@@ -11,6 +11,7 @@ import (
 	"github.com/nonozone/TLSFerry/internal/certstore"
 	"github.com/nonozone/TLSFerry/internal/config"
 	"github.com/nonozone/TLSFerry/internal/credential"
+	qiniuauth "github.com/qiniu/go-sdk/v7/auth"
 )
 
 func TestQiniuDeploysToCDN(t *testing.T) {
@@ -48,5 +49,29 @@ func TestQiniuDeploysToCDN(t *testing.T) {
 	}
 	if result.Reference != "cert-1" || len(paths) != 3 || paths[2] != "PUT /domain/assets.example.com/httpsconf" {
 		t.Fatalf("result = %#v, paths = %#v", result, paths)
+	}
+}
+
+func TestQiniuErrorDoesNotExposeResponseBody(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write([]byte(`{"error":"reflected-private-key"}`))
+	}))
+	defer server.Close()
+
+	provider := qiniuProvider{baseURL: server.URL, client: server.Client()}
+	err := provider.request(
+		context.Background(),
+		qiniuauth.New("access", "secret"),
+		http.MethodPost,
+		"/sslcert",
+		map[string]string{"pri": "private-key"},
+		nil,
+	)
+	if err == nil || !strings.Contains(err.Error(), "400") {
+		t.Fatalf("request() error = %v", err)
+	}
+	if strings.Contains(err.Error(), "private-key") {
+		t.Fatalf("request() exposed response body: %v", err)
 	}
 }

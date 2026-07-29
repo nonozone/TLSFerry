@@ -82,6 +82,14 @@ The control plane should return a short, non-sensitive plain-text or JSON error 
 
 Tokens, cloud credentials, ACME key authorization, and certificate private keys must never appear in an error response or log entry.
 
+Error responses may return a machine-readable JSON code:
+
+```json
+{"code":"domain_outside_scope"}
+```
+
+The code must contain only lowercase ASCII letters, digits, dots, underscores, or hyphens and must be at most 64 characters. CE ignores arbitrary response text and logs only the HTTP status and a valid code, preventing reflected tokens, challenge values, or private material from entering executor logs.
+
 ## Executor configuration
 
 The current CE adapter resolves two fields from an environment or keychain credential profile:

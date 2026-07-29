@@ -1,10 +1,11 @@
-.PHONY: help build install uninstall fmt fmt-check test vet validate-example verify release-snapshot clean
+.PHONY: help build install uninstall fmt fmt-check test vet security validate-example verify release-snapshot clean
 
 BINARY ?= tlsferry
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 PREFIX ?= $(HOME)/.local
 BINDIR ?= $(PREFIX)/bin
 LDFLAGS := -s -w -X github.com/nonozone/TLSFerry/internal/cli.version=$(VERSION)
+GOVULNCHECK_VERSION ?= v1.6.0
 
 help:
 	@echo "TLSFerry CE development and release commands"
@@ -12,7 +13,8 @@ help:
 	@echo "  make install           Install into $(BINDIR)"
 	@echo "  make uninstall         Remove $(BINDIR)/$(BINARY)"
 	@echo "  make test              Run the Go test suite"
-	@echo "  make verify            Run formatting, tests, vet, build, and config checks"
+	@echo "  make security          Scan reachable Go code for known vulnerabilities"
+	@echo "  make verify            Run formatting, tests, vet, security, build, and config checks"
 	@echo "  make release-snapshot  Build local release archives with GoReleaser"
 
 build:
@@ -38,10 +40,13 @@ test:
 vet:
 	go vet ./...
 
+security:
+	go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
+
 validate-example:
 	go run ./cmd/tlsferry validate --config config.example.json
 
-verify: fmt-check test vet build validate-example
+verify: fmt-check test vet security build validate-example
 
 release-snapshot:
 	goreleaser release --snapshot --clean

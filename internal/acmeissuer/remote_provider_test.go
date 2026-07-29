@@ -83,7 +83,9 @@ func TestRemoteDNSProviderRejectsInsecureRemoteURL(t *testing.T) {
 
 func TestRemoteDNSProviderReportsControlPlaneError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "domain is outside the job scope", http.StatusForbidden)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"code":"domain_outside_scope","message":"reflected job-token and challenge-value"}`))
 	}))
 	t.Cleanup(server.Close)
 
@@ -96,8 +98,11 @@ func TestRemoteDNSProviderReportsControlPlaneError(t *testing.T) {
 	}
 
 	err = provider.Present("example.com", "token", "key-auth")
-	if err == nil || !strings.Contains(err.Error(), "403") || !strings.Contains(err.Error(), "outside the job scope") {
+	if err == nil || !strings.Contains(err.Error(), "403") || !strings.Contains(err.Error(), "domain_outside_scope") {
 		t.Fatalf("Present() error = %v", err)
+	}
+	if strings.Contains(err.Error(), "job-token") || strings.Contains(err.Error(), "challenge-value") {
+		t.Fatalf("Present() exposed remote response details: %v", err)
 	}
 }
 

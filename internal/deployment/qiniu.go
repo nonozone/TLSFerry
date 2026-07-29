@@ -114,7 +114,7 @@ func (p qiniuProvider) request(ctx context.Context, credentials *qiniuauth.Crede
 		return err
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return fmt.Errorf("Qiniu API returned %s: %s", response.Status, strings.TrimSpace(string(responseBody)))
+		return fmt.Errorf("Qiniu API returned %s", response.Status)
 	}
 	if output != nil && len(responseBody) > 0 {
 		if err := json.Unmarshal(responseBody, output); err != nil {
