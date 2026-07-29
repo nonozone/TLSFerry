@@ -26,7 +26,7 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 
 | Environment | Install | Status | Run now | Logs/diagnostics | Uninstall | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
-| macOS launchd user agent | Pending | Pending | Pending | Pending | Pending | Record OS version, commands, sanitized output, and date. |
+| macOS launchd user agent | Pass | Pass | Pass | Pass | Pass | See the macOS evidence below for commit, OS, isolated commands, sanitized results, and cleanup. |
 | Linux systemd user timer | Pending | Pending | Pending | Pending | Pending | Include missed-run recovery and whether user linger was required. |
 | Windows Task Scheduler | Pending | Pending | Pending | Pending | Pending | Include interactive-user identity and last-result inspection. |
 
@@ -34,6 +34,18 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 | --- | --- | --- |
 | Let's Encrypt staging DNS-01 issuance | Pending | Dedicated test hostname, staging directory, sanitized command result, certificate metadata, and confirmation that no secret or challenge value entered logs. |
 | Non-production provider deployment | Pending | Least-privilege test credential, target resource, sanitized provider request id, and rollback/removal result. |
+
+### macOS launchd user-agent evidence
+
+- Date: `2026-07-29T06:29:44Z`.
+- Source commit and binary version: `03c133e6e151d5c151e68203badddc89b267ebad`.
+- Host: macOS 27.0, build `26A5388g`, Apple silicon.
+- Isolation: the test supplied a temporary `HOME`, state directory, output directory, log directory, plist path, and binary path under `/tmp/tlsferry-launchd-evidence.*`. It used a reserved `.invalid` hostname, the Let's Encrypt staging directory, and an intentionally absent environment credential. No production credential or resource was used.
+- Install: `tlsferry service install --config <test-home>/config.json --state-dir <test-home>/state --output-dir <test-home>/certificates --hour 3 --minute 17 --accept-tos --execute` succeeded; `plutil -lint` reported `OK` for the generated plist.
+- Status: `tlsferry service status` reported `installed: true` and `running: true`; `launchctl print` reported `state = running`, `runs = 1`, and PID `15269`.
+- Run now: `tlsferry service run-now` reported `renewal service started`. A second `launchctl print` retained PID `15269` and `runs = 1`, proving the active renewal was not killed or overlapped; the error log contained no renewal-lock conflict.
+- Diagnostics: `tlsferry service logs` returned the isolated standard-output and standard-error paths under `<test-home>/.tlsferry/logs/`.
+- Uninstall: `tlsferry service uninstall` succeeded. A final status reported `installed: false` and `running: false`; the plist was absent and `launchctl print gui/<uid>/com.nonozone.tlsferry` no longer found the service. The temporary test directory was removed.
 
 ## Publication boundary
 
