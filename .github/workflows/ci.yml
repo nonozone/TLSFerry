@@ -39,8 +39,10 @@ jobs:
         run: go test ./... -count=1
       - name: Exercise credential-free functional flow
         run: make functional-smoke
-      - name: Build platform binary
-        run: go build -trimpath ./cmd/tlsferry
+      - name: Build release archives
+        run: make release-snapshot
+      - name: Exercise release artifacts
+        run: make artifact-smoke
 
   scheduler-linux:
     name: Smoke systemd user timer

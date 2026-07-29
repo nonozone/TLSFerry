@@ -333,6 +333,15 @@ make functional-smoke
 
 This checks validation, planning, preflight, read-only cloud discovery, enrollment preview, selected-domain-only persistence, and secret-safe output without contacting ACME, DNS, or a cloud API.
 
+After building a snapshot, verify all six archives and execute the current platform's archived binary:
+
+```bash
+make release-snapshot
+make artifact-smoke
+```
+
+The artifact report binds the archives to the current commit and GoReleaser version, verifies every checksum, rejects unsafe or unexpected files, and confirms bundled public files match the source tree byte for byte.
+
 Create a local release archive with [GoReleaser](https://goreleaser.com/) installed:
 
 ```bash

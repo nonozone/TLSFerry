@@ -1,4 +1,4 @@
-.PHONY: help build install uninstall fmt fmt-check test functional-smoke vet security validate-example verify release-audit release-snapshot release-check clean
+.PHONY: help build install uninstall fmt fmt-check test functional-smoke vet security validate-example verify release-audit release-snapshot artifact-smoke release-check clean
 
 BINARY ?= tlsferry
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -21,6 +21,7 @@ help:
 	@echo "  make verify            Run formatting, tests, vet, security, build, and config checks"
 	@echo "  make release-audit     Audit candidate metadata and CE source boundaries"
 	@echo "  make release-snapshot  Build local release archives with GoReleaser"
+	@echo "  make artifact-smoke    Verify checksums, archive contents, and native version"
 	@echo "  make release-check     Run the clean-worktree RC release gate"
 
 build:
@@ -63,12 +64,16 @@ release-audit:
 release-snapshot:
 	go run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) release --snapshot --clean
 
+artifact-smoke:
+	go run ./internal/releaseartifact --repository . --dist dist
+
 release-check:
 	@test -z "$$(git status --porcelain --untracked-files=no)" || (echo "release check requires a clean tracked worktree"; exit 1)
 	$(MAKE) release-audit
 	$(MAKE) verify
 	go run github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION) check
 	$(MAKE) release-snapshot
+	$(MAKE) artifact-smoke
 	@test -z "$$(git status --porcelain --untracked-files=no)" || (echo "release check changed tracked files"; exit 1)
 
 clean:

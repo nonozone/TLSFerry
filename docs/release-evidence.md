@@ -18,6 +18,7 @@ This file is the evidence matrix for a CE release candidate. It does not weaken 
 | Clean CE/Cloud boundary | Pending | Run `internal/edition` tests on the candidate and review `docs/edition-boundary.md`; confirm Cloud implementation remains in the separate private repository. |
 | Local release gate | Pending | Run `make release-check` from a clean checkout of the candidate commit. Record the command, commit SHA, date, and sanitized output or artifact link. |
 | GitHub cross-platform CI | Pending | Record the CI run URL for the candidate commit. Verification plus Ubuntu, macOS, and Windows test/build jobs must pass. |
+| Release archive integrity | Pending | Record `artifact-smoke` results for Ubuntu, macOS, and Windows. All six archives, checksums, bundled files, source commit, Unix execute modes, and native version output must pass. |
 | Public repository metadata | Pending | Confirm the candidate repository is public and reports Apache-2.0; verify `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, changelog, deployment guide, example config, and public protocol documentation are tracked. |
 
 Generate the local, credential-free part of this table with `make release-audit AUDIT_VERSION=<candidate> AUDIT_REVIEWER=<name>`. Preserve its JSON output with the candidate review. A passing audit records the exact commit and time, but deliberately lists CI, public repository metadata, real staging issuance, provider deployment, and tag authorization as manual gates.

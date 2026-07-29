@@ -88,7 +88,10 @@ git diff --check
 
 ```bash
 make release-snapshot
+make artifact-smoke
 ```
+
+The artifact smoke verifies all six checksums and archive manifests, compares bundled public files with the source commit, and executes the current platform's archived binary to confirm its embedded version before installation.
 
 ## Install and startup contract
 
