@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"strings"
 	"testing"
+	"unicode/utf16"
 )
 
 func TestWindowsTaskRunsRenewDailyAndStartsWhenAvailable(t *testing.T) {
@@ -36,6 +37,21 @@ func TestWindowsTaskRunsRenewDailyAndStartsWhenAvailable(t *testing.T) {
 		if !strings.Contains(text, expected) {
 			t.Fatalf("task does not contain %q:\n%s", expected, text)
 		}
+	}
+}
+
+func TestEncodeWindowsTaskFileUsesUTF16LE(t *testing.T) {
+	encoded := encodeWindowsTaskFile([]byte(`<?xml version="1.0" encoding="UTF-8"?><Task/>`))
+	if len(encoded) < 2 || encoded[0] != 0xff || encoded[1] != 0xfe {
+		t.Fatalf("encoded task does not start with a UTF-16LE BOM: %x", encoded)
+	}
+	units := make([]uint16, 0, (len(encoded)-2)/2)
+	for index := 2; index+1 < len(encoded); index += 2 {
+		units = append(units, uint16(encoded[index])|uint16(encoded[index+1])<<8)
+	}
+	decoded := string(utf16.Decode(units))
+	if decoded != `<?xml version="1.0" encoding="UTF-16"?><Task/>` {
+		t.Fatalf("decoded task = %q", decoded)
 	}
 }
 

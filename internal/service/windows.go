@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"unicode/utf16"
 )
 
 const WindowsTaskName = "TLSFerry Renewal"
@@ -217,7 +218,7 @@ func writeWindowsTaskFile(path string, content []byte) error {
 		temporary.Close()
 		return err
 	}
-	if _, err := temporary.Write(content); err != nil {
+	if _, err := temporary.Write(encodeWindowsTaskFile(content)); err != nil {
 		temporary.Close()
 		return err
 	}
@@ -225,6 +226,17 @@ func writeWindowsTaskFile(path string, content []byte) error {
 		return err
 	}
 	return os.Rename(temporaryPath, path)
+}
+
+func encodeWindowsTaskFile(content []byte) []byte {
+	text := strings.Replace(string(content), `encoding="UTF-8"`, `encoding="UTF-16"`, 1)
+	units := utf16.Encode([]rune(text))
+	encoded := make([]byte, 2, 2+len(units)*2)
+	encoded[0], encoded[1] = 0xff, 0xfe
+	for _, unit := range units {
+		encoded = append(encoded, byte(unit), byte(unit>>8))
+	}
+	return encoded
 }
 
 func runSchtasks(arguments ...string) error {
