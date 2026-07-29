@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	pathpkg "path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -33,7 +34,7 @@ func RenderSystemd(config SystemdConfig) ([]byte, []byte, error) {
 		"state":      config.StateDir,
 		"output":     config.OutputDir,
 	} {
-		if !filepath.IsAbs(path) {
+		if !pathpkg.IsAbs(path) {
 			return nil, nil, fmt.Errorf("%s path must be absolute", name)
 		}
 	}

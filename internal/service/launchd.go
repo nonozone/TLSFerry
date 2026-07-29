@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
-	"path/filepath"
+	pathpkg "path"
 )
 
 const LaunchdLabel = "com.nonozone.tlsferry"
@@ -27,7 +27,7 @@ func RenderLaunchd(config LaunchdConfig) ([]byte, error) {
 		"output":     config.OutputDir,
 		"log":        config.LogDir,
 	} {
-		if !filepath.IsAbs(path) {
+		if !pathpkg.IsAbs(path) {
 			return nil, fmt.Errorf("%s path must be absolute", name)
 		}
 	}
@@ -63,8 +63,8 @@ func RenderLaunchd(config LaunchdConfig) ([]byte, error) {
 	fmt.Fprintf(&output, "    <key>Hour</key>\n    <integer>%d</integer>\n", config.Hour)
 	fmt.Fprintf(&output, "    <key>Minute</key>\n    <integer>%d</integer>\n", config.Minute)
 	output.WriteString("  </dict>\n")
-	writeKeyString(&output, "StandardOutPath", filepath.Join(config.LogDir, "renew.log"))
-	writeKeyString(&output, "StandardErrorPath", filepath.Join(config.LogDir, "renew.error.log"))
+	writeKeyString(&output, "StandardOutPath", pathpkg.Join(config.LogDir, "renew.log"))
+	writeKeyString(&output, "StandardErrorPath", pathpkg.Join(config.LogDir, "renew.error.log"))
 	output.WriteString("</dict>\n</plist>\n")
 	return output.Bytes(), nil
 }
