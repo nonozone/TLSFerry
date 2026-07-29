@@ -76,7 +76,13 @@ func KickstartLaunchd() error {
 	if runtime.GOOS != "darwin" {
 		return fmt.Errorf("automatic service installation is currently supported on macOS only")
 	}
-	output, err := exec.Command("launchctl", "kickstart", "-k", launchdDomain()+"/"+LaunchdLabel).CombinedOutput()
+	return kickstartLaunchd(func(args ...string) ([]byte, error) {
+		return exec.Command("launchctl", args...).CombinedOutput()
+	})
+}
+
+func kickstartLaunchd(run func(args ...string) ([]byte, error)) error {
+	output, err := run("kickstart", launchdDomain()+"/"+LaunchdLabel)
 	if err != nil {
 		return fmt.Errorf("start launchd service: %w: %s", err, string(output))
 	}
