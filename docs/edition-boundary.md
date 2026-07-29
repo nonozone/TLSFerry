@@ -13,7 +13,7 @@ TLSFerry CE and TLSFerry Cloud share protocols, not a deployment unit or private
 ## Cloud owns privately
 
 - User accounts, organizations, sessions, tenants, plans, quotas, and billing.
-- Cloudflare Workers/Hono control-plane endpoints and the Vue console.
+- Cloudflare Workers/Hono control-plane endpoints and the private web console.
 - D1 schemas and migrations, Workflows/Cron orchestration, and R2 archives.
 - Authoritative validation-zone credentials and challenge-record lifecycle.
 - Executor registration, job assignment, audit history, notification delivery, and operational administration.

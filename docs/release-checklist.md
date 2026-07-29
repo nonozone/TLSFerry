@@ -2,6 +2,8 @@
 
 This checklist is the release gate for CE. A green unit test alone is not sufficient evidence for a release.
 
+Record reproducible results in [release-evidence.md](release-evidence.md). Pending rows in that file are release blockers, not optional follow-up work.
+
 ## 1. Source and edition boundary
 
 - The tracked worktree is clean and points at the intended release commit.
