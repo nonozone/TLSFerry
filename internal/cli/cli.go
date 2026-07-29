@@ -28,7 +28,9 @@ import (
 	"golang.org/x/term"
 )
 
-const version = "dev"
+// version is replaced at release time with -ldflags. Local builds keep the
+// explicit dev value so operators can distinguish them from published builds.
+var version = "dev"
 
 func Run(args []string, stdout, stderr io.Writer) int {
 	return RunWithInput(args, os.Stdin, stdout, stderr)

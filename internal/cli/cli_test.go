@@ -17,6 +17,18 @@ func TestIssueRequiresCertificateName(t *testing.T) {
 	}
 }
 
+func TestVersionPrintsBuildVersion(t *testing.T) {
+	originalVersion := version
+	version = "v1.2.3"
+	t.Cleanup(func() { version = originalVersion })
+
+	var stdout, stderr strings.Builder
+	code := Run([]string{"version"}, &stdout, &stderr)
+	if code != 0 || stdout.String() != "TLSFerry v1.2.3\n" || stderr.Len() != 0 {
+		t.Fatalf("Run() code = %d, stdout = %q, stderr = %q", code, stdout.String(), stderr.String())
+	}
+}
+
 func TestIssueRequiresTermsAcceptance(t *testing.T) {
 	var stdout, stderr strings.Builder
 	code := Run([]string{"issue", "--certificate", "assets"}, &stdout, &stderr)

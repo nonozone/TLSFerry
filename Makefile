@@ -1,12 +1,50 @@
-.PHONY: build fmt test verify
+.PHONY: help build install uninstall fmt fmt-check test vet validate-example verify release-snapshot clean
+
+BINARY ?= tlsferry
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+PREFIX ?= $(HOME)/.local
+BINDIR ?= $(PREFIX)/bin
+LDFLAGS := -s -w -X github.com/nonozone/TLSFerry/internal/cli.version=$(VERSION)
+
+help:
+	@echo "TLSFerry CE development and release commands"
+	@echo "  make build             Build bin/$(BINARY) with version metadata"
+	@echo "  make install           Install into $(BINDIR)"
+	@echo "  make uninstall         Remove $(BINDIR)/$(BINARY)"
+	@echo "  make test              Run the Go test suite"
+	@echo "  make verify            Run formatting, tests, vet, build, and config checks"
+	@echo "  make release-snapshot  Build local release archives with GoReleaser"
 
 build:
-	go build -o bin/tlsferry ./cmd/tlsferry
+	@mkdir -p bin
+	go build -trimpath -ldflags "$(LDFLAGS)" -o bin/$(BINARY) ./cmd/tlsferry
+
+install: build
+	install -d "$(BINDIR)"
+	install -m 0755 "bin/$(BINARY)" "$(BINDIR)/$(BINARY)"
+
+uninstall:
+	rm -f "$(BINDIR)/$(BINARY)"
 
 fmt:
 	gofmt -w ./cmd ./internal
 
-test:
-	go test ./...
+fmt-check:
+	@files="$$(gofmt -l ./cmd ./internal)"; if [ -n "$$files" ]; then echo "Go files need formatting:"; echo "$$files"; exit 1; fi
 
-verify: fmt test build
+test:
+	go test ./... -count=1
+
+vet:
+	go vet ./...
+
+validate-example:
+	go run ./cmd/tlsferry validate --config config.example.json
+
+verify: fmt-check test vet build validate-example
+
+release-snapshot:
+	goreleaser release --snapshot --clean
+
+clean:
+	rm -rf bin dist

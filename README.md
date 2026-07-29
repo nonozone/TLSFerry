@@ -11,6 +11,18 @@ The project can issue real certificates through ACME DNS-01 and deploy them to T
 
 The shared certificate and provider behavior remains in CE. The commercial service sells hosted operation and reduced maintenance rather than a different certificate format or a deliberately broken community build.
 
+## Installation
+
+Tagged releases publish standalone archives for macOS, Linux, and Windows, together with `checksums.txt`. Until the first tag is published, build and install from source:
+
+```bash
+make verify
+make install
+"$HOME/.local/bin/tlsferry" version
+```
+
+See [the deployment and operations guide](deploy/README.md) for release checks, directory layout, scheduler setup, upgrades, and rollback boundaries.
+
 ## Why Go
 
 - One static binary is easy to run on servers, NAS devices, containers, and CI systems.
@@ -284,6 +296,14 @@ For unattended Linux servers, cron and systemd timers remain supported manually.
 ```bash
 make verify
 ```
+
+Create a local release archive with [GoReleaser](https://goreleaser.com/) installed:
+
+```bash
+make release-snapshot
+```
+
+Pushing a `v*` tag runs the same verification and publishes versioned cross-platform archives plus SHA-256 checksums.
 
 The canonical Go module path is `github.com/nonozone/TLSFerry`.
 
