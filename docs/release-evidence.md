@@ -19,9 +19,18 @@ This file is the evidence matrix for a CE release candidate. It does not weaken 
 | Local release gate | Pending | Run `make release-check` from a clean checkout of the candidate commit. Record the command, commit SHA, date, and sanitized output or artifact link. |
 | GitHub cross-platform CI | Pending | Record the CI run URL for the candidate commit. Verification plus Ubuntu, macOS, and Windows test/build jobs must pass. |
 | Release archive integrity | Pass | Commit `37c1a885b0b150e75a26ae7bc086d9bc7a6ecda2` passed the local release gate and native archive smoke on Ubuntu, macOS, and Windows; see the reproducible evidence below. |
-| Public repository metadata | Pending | Confirm the candidate repository is public and reports Apache-2.0; verify `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, changelog, deployment guide, example config, and public protocol documentation are tracked. |
+| Public repository metadata | Pass | Verified against commit `41c0604c14be394c6db5aa86cfca95e87d14b211`: GitHub reports a public Apache-2.0 repository, all required public files are tracked, and the repository security/reporting settings below are enabled. |
 
 Generate the local, credential-free part of this table with `make release-audit AUDIT_VERSION=<candidate> AUDIT_REVIEWER=<name>`. Preserve its JSON output with the candidate review. A passing audit records the exact commit and time, but deliberately lists CI, public repository metadata, real staging issuance, provider deployment, and tag authorization as manual gates.
+
+### Public repository metadata and security evidence
+
+- Date and source: `2026-07-29`, commit `41c0604c14be394c6db5aa86cfca95e87d14b211`, [public repository](https://github.com/nonozone/TLSFerry), and [CI run 30433444115](https://github.com/nonozone/TLSFerry/actions/runs/30433444115).
+- GitHub metadata: the repository API reported `visibility: public`, default branch `main`, and SPDX license `Apache-2.0`. Topics are `acme`, `certificate-automation`, `certificate-management`, `dns-01`, `golang`, `letsencrypt`, `self-hosted`, and `tls`.
+- Public source files: Git confirmed that `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, README, the deployment guide, example configuration, edition boundary, release checklist/evidence, and remote DNS protocol are tracked.
+- Security reporting: private vulnerability reporting is enabled, so the **Security → Report a vulnerability** route documented in `SECURITY.md` is available. Dependabot vulnerability alerts and security updates, secret scanning, and secret-scanning push protection are enabled.
+- Workflow permissions: GitHub's default workflow permission is read-only and Actions cannot approve pull requests. Release actions are pinned to full commit SHAs; the source audit enforces a read-only verification job, a dependent publication job with the only `contents: write` grant, non-persisted checkout credentials, and a single explicit `GITHUB_TOKEN` handoff.
+- Maintainer policy: `main` currently has no GitHub branch-protection rule, preserving the current single-maintainer direct-push workflow. This is not release authorization: pushing a `v*` tag remains a separate deliberate action, and branch protection must be reconsidered before granting additional maintainers write access.
 
 ## Required real-environment evidence
 
