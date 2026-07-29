@@ -18,7 +18,7 @@ This file is the evidence matrix for a CE release candidate. It does not weaken 
 | Clean CE/Cloud boundary | Pending | Run `internal/edition` tests on the candidate and review `docs/edition-boundary.md`; confirm Cloud implementation remains in the separate private repository. |
 | Local release gate | Pending | Run `make release-check` from a clean checkout of the candidate commit. Record the command, commit SHA, date, and sanitized output or artifact link. |
 | GitHub cross-platform CI | Pending | Record the CI run URL for the candidate commit. Verification plus Ubuntu, macOS, and Windows test/build jobs must pass. |
-| Release archive integrity | Pending | Record `artifact-smoke` results for Ubuntu, macOS, and Windows. All six archives, checksums, bundled files, source commit, Unix execute modes, and native version output must pass. |
+| Release archive integrity | Pass | Commit `37c1a885b0b150e75a26ae7bc086d9bc7a6ecda2` passed the local release gate and native archive smoke on Ubuntu, macOS, and Windows; see the reproducible evidence below. |
 | Public repository metadata | Pending | Confirm the candidate repository is public and reports Apache-2.0; verify `LICENSE`, `SECURITY.md`, `CONTRIBUTING.md`, changelog, deployment guide, example config, and public protocol documentation are tracked. |
 
 Generate the local, credential-free part of this table with `make release-audit AUDIT_VERSION=<candidate> AUDIT_REVIEWER=<name>`. Preserve its JSON output with the candidate review. A passing audit records the exact commit and time, but deliberately lists CI, public repository metadata, real staging issuance, provider deployment, and tag authorization as manual gates.
@@ -48,6 +48,15 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 - Read-only behavior: byte-for-byte configuration comparisons proved that `validate`, `plan`, `preflight`, JSON discovery, and enrollment preview did not modify the configuration.
 - Enrollment behavior: `--execute` preserved the existing certificate, appended exactly one certificate for the selected account-owned CDN domain, excluded the second unselected inventory domain, and produced a configuration that passed a second `preflight`.
 - Secret safety: the test checked all command output against every synthetic credential value. Failure diagnostics redact those values before writing test output.
+
+### Release archive integrity evidence
+
+- Date and source: `2026-07-29`, commit `37c1a885b0b150e75a26ae7bc086d9bc7a6ecda2`, [CI run 30431879003](https://github.com/nonozone/TLSFerry/actions/runs/30431879003).
+- Native jobs: [Ubuntu 90510730449](https://github.com/nonozone/TLSFerry/actions/runs/30431879003/job/90510730449), [macOS 90510730527](https://github.com/nonozone/TLSFerry/actions/runs/30431879003/job/90510730527), and [Windows 90510730577](https://github.com/nonozone/TLSFerry/actions/runs/30431879003/job/90510730577) each built all release targets and executed the archive verifier on its native platform.
+- Archive set: the verifier required exactly six expected archives for Linux, macOS, and Windows on amd64 and arm64, plus a checksum entry for every archive. Missing, duplicate, unexpected, path-traversing, or otherwise unsafe archive entries fail the check.
+- Source binding: verification required a clean tracked worktree, bound GoReleaser metadata to the exact Git `HEAD`, and compared the archived `LICENSE`, `README.md`, and `config.example.json` byte-for-byte with the source commit.
+- Runtime and modes: Unix archives were required to preserve an executable binary mode. Each native job extracted its own archive and successfully ran `tlsferry version`, proving that the packaged binary—not only the source tree—was executable.
+- Local gate: `make release-check` passed from the clean source commit and included `make artifact-smoke`, all Go tests, vet, a fixed-version vulnerability scan with zero reachable vulnerabilities, example validation, GoReleaser configuration validation, six snapshot archives, and checksum verification.
 
 ### macOS launchd user-agent evidence
 
