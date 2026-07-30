@@ -1,9 +1,3 @@
-<p align="center">
-  <img src="assets/brand/tlsferry-logo.svg" width="420" alt="TLSFerry">
-</p>
-
-<p align="center"><strong>Certificates, safely delivered.</strong></p>
-
 # TLSFerry Community Edition
 
 TLSFerry Community Edition (CE) is the open-source, self-hosted edition of TLSFerry. It is a Go-based TLS certificate automation tool for issuing certificates through ACME and delivering them to multiple cloud platforms.
@@ -16,8 +10,6 @@ The project can issue real certificates through ACME DNS-01 and deploy them to T
 - **TLSFerry Cloud** is the planned managed service. Its hosted DNS validation, account system, billing, orchestration, and operations control plane are separate from this repository.
 
 The shared certificate and provider behavior remains in CE. The commercial service sells hosted operation and reduced maintenance rather than a different certificate format or a deliberately broken community build. The enforced source and protocol boundary is documented in [docs/edition-boundary.md](docs/edition-boundary.md).
-
-The shared logo, colors, typography, CLI presentation rules, and Cloud console direction are documented in the [brand and UI identity guide](docs/brand-identity.md). Cloud implementation remains in its private repository.
 
 ## Installation
 

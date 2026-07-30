@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
-  <title id="title">TLSFerry monochrome mark</title>
-  <desc id="desc">A certificate carried between two infrastructure endpoints by a geometric ferry.</desc>
-  <path fill="#102A33" d="m4 29 16 7v14H4Z"/>
-  <path fill="#102A33" d="m60 29-16 7v14h16Z"/>
-  <path fill="#102A33" fill-rule="evenodd" d="M20 31h24l-3 14-9 6-9-6Zm3 7 9 5 9-5-.8 3.5-8.2 4.8-8.2-4.8Z"/>
-  <path fill="#102A33" d="m25 18 16-2-2 14-16 2Z"/>
-</svg>
