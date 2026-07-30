@@ -95,7 +95,7 @@ The code must contain only lowercase ASCII letters, digits, dots, underscores, o
 The current CE adapter resolves two fields from an environment or keychain credential profile:
 
 ```bash
-export TLSFERRY_CLOUD_API_URL=https://cloud.tlsferry.com
+export TLSFERRY_CLOUD_API_URL=https://console.tlsferry.com
 export TLSFERRY_CLOUD_API_TOKEN=short-lived-job-token
 ```
 
