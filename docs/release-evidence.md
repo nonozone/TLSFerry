@@ -9,17 +9,17 @@ Updating this tracked file creates a new Git commit, so it cannot truthfully emb
 | Field | Value |
 | --- | --- |
 | Version | Unversioned CE candidate (no `v*` tag authorized or created) |
-| Commit | `75ba54ff4c32e2a5ae81c893a0a3fc419b9a52e0` |
-| Review date | `2026-07-30T17:02:53Z` |
-| Reviewer | Local release audit (`local`) plus GitHub Actions |
+| Commit | `256c9d138a96482aa63298be4fde144b46b188af` |
+| Review date | `2026-07-30T18:32:34Z` |
+| Reviewer | Local release audit (`Codex`) plus GitHub Actions |
 
 ## Automated evidence
 
 | Requirement | Status | Evidence |
 | --- | --- | --- |
 | Clean CE/Cloud boundary | Pass | The candidate passed `make release-audit` and all `internal/edition` tests. The audit found no Cloud product implementation in CE; the only crossing point remains the public, versioned remote DNS protocol. |
-| Local release gate | Pass | `env GOCACHE=/private/tmp/tlsferry-go-cache make release-check` passed from the clean candidate commit at `2026-07-30T17:02:53Z`; see the candidate evidence below. |
-| GitHub cross-platform CI | Pass | [CI run 30533570184](https://github.com/nonozone/TLSFerry/actions/runs/30533570184) passed for the exact candidate commit, including verification, Ubuntu, macOS, Windows, systemd, and Task Scheduler jobs. |
+| Local release gate | Pass | `env GOCACHE=/private/tmp/tlsferry-go-cache make release-check AUDIT_VERSION=v0.1.0-rc.1 AUDIT_REVIEWER=Codex` passed from the clean candidate commit at `2026-07-30T18:32:34Z`; see the candidate evidence below. |
+| GitHub cross-platform CI | Pass | [CI run 30564440266](https://github.com/nonozone/TLSFerry/actions/runs/30564440266) passed for the exact candidate commit, including verification, Ubuntu, macOS, Windows, systemd, and Task Scheduler jobs. |
 | Release archive integrity | Pass | The candidate passed local six-platform snapshot archive verification; the exact commit also passed native archive smoke on Ubuntu, macOS, and Windows in CI. See the candidate and reproducible archive evidence below. |
 | Public repository metadata | Pass | Verified for the candidate review: GitHub reports a public, active Apache-2.0 repository with `main` as its default branch. Required source files and security settings are covered by the evidence below. |
 
@@ -27,11 +27,11 @@ Generate the local, credential-free part of this table with `make release-audit 
 
 ### Current candidate automated evidence
 
-- Date and source: `2026-07-30T17:02:53Z`, commit `75ba54ff4c32e2a5ae81c893a0a3fc419b9a52e0`, and [CI run 30533570184](https://github.com/nonozone/TLSFerry/actions/runs/30533570184).
-- Local gate: `env GOCACHE=/private/tmp/tlsferry-go-cache make release-check` passed from a clean tracked worktree. It ran the source and edition audit, all Go tests, credential-free functional smoke, `go vet`, `govulncheck v1.6.0`, both example configuration validations, GoReleaser configuration validation, six-platform snapshot builds, checksum verification, archive-content checks, and the native packaged-binary version smoke.
+- Date and source: `2026-07-30T18:32:34Z`, commit `256c9d138a96482aa63298be4fde144b46b188af`, and [CI run 30564440266](https://github.com/nonozone/TLSFerry/actions/runs/30564440266).
+- Local gate: `env GOCACHE=/private/tmp/tlsferry-go-cache make release-check AUDIT_VERSION=v0.1.0-rc.1 AUDIT_REVIEWER=Codex` passed from a clean tracked worktree. It ran the source and edition audit, all Go tests, credential-free functional smoke, `go vet`, `govulncheck v1.6.0`, both example configuration validations, GoReleaser configuration validation, six-platform snapshot builds, checksum verification, archive-content checks, and the native packaged-binary version smoke.
 - Vulnerability result: `govulncheck` reported zero reachable vulnerabilities and zero vulnerabilities in imported packages. It reported one module-only advisory that is not called by TLSFerry, consistent with the dependency evidence below.
-- Archive result: Linux, macOS, and Windows archives for amd64 and arm64 were present with checksums. Every archive contained `LICENSE`, `README.md`, `config.example.json`, `config.release-smoke.example.json`, and the platform binary; the native archived binary reported `TLSFerry 0.0.0-SNAPSHOT-75ba54f`.
-- Exact-commit CI: [verify 90841343397](https://github.com/nonozone/TLSFerry/actions/runs/30533570184/job/90841343397), [Ubuntu 90841343431](https://github.com/nonozone/TLSFerry/actions/runs/30533570184/job/90841343431), [macOS 90841343399](https://github.com/nonozone/TLSFerry/actions/runs/30533570184/job/90841343399), [Windows 90841343339](https://github.com/nonozone/TLSFerry/actions/runs/30533570184/job/90841343339), [systemd 90841343488](https://github.com/nonozone/TLSFerry/actions/runs/30533570184/job/90841343488), and [Task Scheduler 90841343321](https://github.com/nonozone/TLSFerry/actions/runs/30533570184/job/90841343321) all completed successfully.
+- Archive result: Linux, macOS, and Windows archives for amd64 and arm64 were present with checksums. Every archive contained `LICENSE`, `README.md`, `config.example.json`, `config.release-smoke.example.json`, and the platform binary; the native archived binary reported `TLSFerry 0.0.0-SNAPSHOT-256c9d1`.
+- Exact-commit CI: [verify 90945299238](https://github.com/nonozone/TLSFerry/actions/runs/30564440266/job/90945299238), [Ubuntu 90945299679](https://github.com/nonozone/TLSFerry/actions/runs/30564440266/job/90945299679), [macOS 90945299217](https://github.com/nonozone/TLSFerry/actions/runs/30564440266/job/90945299217), [Windows 90945299386](https://github.com/nonozone/TLSFerry/actions/runs/30564440266/job/90945299386), [systemd 90945299203](https://github.com/nonozone/TLSFerry/actions/runs/30564440266/job/90945299203), and [Task Scheduler 90945299236](https://github.com/nonozone/TLSFerry/actions/runs/30564440266/job/90945299236) all completed successfully.
 - Publication state: the local repository has no tags and GitHub has no Releases. This records evidence only and does not authorize a tag or publication.
 
 ### Public repository metadata and security evidence
@@ -53,7 +53,7 @@ Generate the local, credential-free part of this table with `make release-audit 
 
 ## Required real-environment evidence
 
-These items remain release blockers. Unit tests, rendered scheduler definitions, and cross-compilation do not replace them.
+These items are mandatory release gates. Unit tests, rendered scheduler definitions, and cross-compilation do not replace them.
 
 | Environment | Install | Status | Run now | Logs/diagnostics | Uninstall | Evidence |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -65,7 +65,7 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 | --- | --- | --- |
 | Credential-free CLI flow | Pass | See the evidence below for the exact commit, local release gate, three native CI jobs, no-network isolation, read-only assertions, selected-domain-only enrollment, and credential-output checks. |
 | Let's Encrypt staging DNS-01 issuance | Pass | `go.nonopen.com` completed delegated DNS-01 issuance through `auth-staging.tlsferry.com`; see the sanitized staging evidence below. |
-| Non-production provider deployment | Cleanup blocked | Tencent CDN accepted and served the uploaded staging certificate, but its API rejected restoration of the expired previous certificate with `FailedOperation.CertificateNotAvailable`. The provider lifecycle is proven, while release cleanup remains blocked until a trusted replacement certificate is explicitly authorized and deployed. |
+| Non-production provider deployment | Pass | Tencent CDN served a fresh staging certificate whose D1 and public-edge fingerprints matched, then Cloud protocol v2 restored the available previous certificate. D1 and a second public TLS probe verified the completed rollback; see the bounded follow-up cycle below. |
 
 ### Real staging ACME and Tencent CDN evidence
 
@@ -74,8 +74,10 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 - Issuance: Let's Encrypt staging issued `CN=go.nonopen.com`, valid from `2026-07-30T08:40:18Z` through `2026-10-28T08:40:17Z`, with SHA-256 fingerprint `C3:76:DA:E8:19:27:2F:D4:2C:81:D6:8D:BF:10:D9:0A:4D:28:95:F4:45:2D:CB:CA:8C:AF:45:3C:6F:C6:DC:F5`.
 - Provider deployment: Tencent SSL certificate ID `Zbw23o2r` and CDN deploy record `239414` completed successfully. A public TLS probe returned the same subject, validity, staging issuer, and SHA-256 fingerprint from the CDN edge.
 - Previous binding: the executor captured Tencent certificate ID `S84T6Taf` before replacement. It was an already expired TrustAsia C1 DV Free certificate for the same hostname.
-- Rollback verification: Cloud protocol v2 queued rollback job `f7b05c31-2746-44be-aeed-43dd96e5a3ed` using only the server-saved previous certificate ID and issued no DNS job token. Tencent rejected that exact certificate with bounded error `FailedOperation.CertificateNotAvailable`; D1 recorded the job as failed, left `rolled_back_at` unset, and retained `Zbw23o2r` as current. A fresh public TLS probe confirmed the staging certificate remained served.
-- Cleanup boundary: do not mark the provider gate complete and do not publish a CE release from this evidence. Restoring public trust now requires a separately authorized production ACME issuance or another currently valid provider certificate; the staging authorization did not grant that production action.
+- Initial rollback result: Cloud protocol v2 queued rollback job `f7b05c31-2746-44be-aeed-43dd96e5a3ed` using only the server-saved previous certificate ID and issued no DNS job token. Tencent rejected the expired `S84T6Taf` certificate with bounded error `FailedOperation.CertificateNotAvailable`; D1 recorded the job as failed, left `rolled_back_at` unset, and retained `Zbw23o2r` as current. A fresh public TLS probe confirmed the staging certificate remained served.
+- Follow-up issuance: after `Zbw23o2r` was known to be an available rollback target, job `42283f08-ba71-433f-980d-635d1e780be9` issued and deployed staging certificate `ZcWx0tDg`, recording `Zbw23o2r` as `previous_provider_certificate_id`. The certificate was valid from `2026-07-30T17:37:51Z` through `2026-10-28T17:37:50Z`; D1 stored SHA-256 `32365b563468505d65cfcf1ff91d6b097b83e9c40fab61e4eecee6b76bcabca6`, and a public TLS probe returned the identical fingerprint `32:36:5B:56:34:68:50:5D:65:CF:CF:1F:F9:1D:6B:09:7B:83:E9:C4:0F:AB:61:E4:EE:CE:E6:B7:6B:CA:BC:A6` from the Tencent CDN edge.
+- Successful rollback: Cloud protocol v2 queued job `feb234ef-741f-463a-a091-b4c8fd79ae8e` for the server-saved target `Zbw23o2r`. Tencent completed the restore at `2026-07-30T18:38:29Z` with no error; D1 recorded the rollback job, target, and `rolled_back_at`. A post-rollback public TLS probe returned the original `Zbw23o2r` validity and SHA-256 fingerprint `C3:76:DA:E8:19:27:2F:D4:2C:81:D6:8D:BF:10:D9:0A:4D:28:95:F4:45:2D:CB:CA:8C:AF:45:3C:6F:C6:DC:F5`.
+- Cleanup boundary: this successful second cycle completes the non-production provider deployment-and-rollback gate. `go.nonopen.com` deliberately remains on a Let’s Encrypt staging certificate and is not publicly trusted; the evidence must not be represented as production readiness. A production ACME issuance, production Cloud provisioning, and any `v*` tag remain separate authorization boundaries.
 
 ### Credential-free CLI functional evidence
 
