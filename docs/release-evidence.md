@@ -64,8 +64,18 @@ These items remain release blockers. Unit tests, rendered scheduler definitions,
 | Functional smoke | Status | Evidence required |
 | --- | --- | --- |
 | Credential-free CLI flow | Pass | See the evidence below for the exact commit, local release gate, three native CI jobs, no-network isolation, read-only assertions, selected-domain-only enrollment, and credential-output checks. |
-| Let's Encrypt staging DNS-01 issuance | Pending | Run `tlsferry release-smoke` for a dedicated test hostname; retain its sanitized evidence containing the staging directory, certificate metadata, and public-certificate SHA-256, and confirm no secret or challenge value entered logs. |
-| Non-production provider deployment | Pending | The same `release-smoke` evidence must identify the least-privilege test target and sanitized provider reference. Its `pending_cleanup` state remains a blocker until the previous binding is restored and rollback/removal is recorded here. |
+| Let's Encrypt staging DNS-01 issuance | Pass | `go.nonopen.com` completed delegated DNS-01 issuance through `auth-staging.tlsferry.com`; see the sanitized staging evidence below. |
+| Non-production provider deployment | Cleanup blocked | Tencent CDN accepted and served the uploaded staging certificate, but its API rejected restoration of the expired previous certificate with `FailedOperation.CertificateNotAvailable`. The provider lifecycle is proven, while release cleanup remains blocked until a trusted replacement certificate is explicitly authorized and deployed. |
+
+### Real staging ACME and Tencent CDN evidence
+
+- Date and environment: `2026-07-30`, TLSFerry Cloud staging control plane at `staging.tlsferry.com`, delegated validation zone `auth-staging.tlsferry.com`, and Tencent CDN hostname `go.nonopen.com`.
+- Delegation: public DNS resolved `_acme-challenge.go.nonopen.com` to the stored per-hostname target under `auth-staging.tlsferry.com`; no Cloudflare API credential, ACME TXT value, certificate PEM, private key, or Tencent permanent credential was returned by the control plane or written to this evidence.
+- Issuance: Let's Encrypt staging issued `CN=go.nonopen.com`, valid from `2026-07-30T08:40:18Z` through `2026-10-28T08:40:17Z`, with SHA-256 fingerprint `C3:76:DA:E8:19:27:2F:D4:2C:81:D6:8D:BF:10:D9:0A:4D:28:95:F4:45:2D:CB:CA:8C:AF:45:3C:6F:C6:DC:F5`.
+- Provider deployment: Tencent SSL certificate ID `Zbw23o2r` and CDN deploy record `239414` completed successfully. A public TLS probe returned the same subject, validity, staging issuer, and SHA-256 fingerprint from the CDN edge.
+- Previous binding: the executor captured Tencent certificate ID `S84T6Taf` before replacement. It was an already expired TrustAsia C1 DV Free certificate for the same hostname.
+- Rollback verification: Cloud protocol v2 queued rollback job `f7b05c31-2746-44be-aeed-43dd96e5a3ed` using only the server-saved previous certificate ID and issued no DNS job token. Tencent rejected that exact certificate with bounded error `FailedOperation.CertificateNotAvailable`; D1 recorded the job as failed, left `rolled_back_at` unset, and retained `Zbw23o2r` as current. A fresh public TLS probe confirmed the staging certificate remained served.
+- Cleanup boundary: do not mark the provider gate complete and do not publish a CE release from this evidence. Restoring public trust now requires a separately authorized production ACME issuance or another currently valid provider certificate; the staging authorization did not grant that production action.
 
 ### Credential-free CLI functional evidence
 
