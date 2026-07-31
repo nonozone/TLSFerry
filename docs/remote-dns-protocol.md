@@ -2,7 +2,7 @@
 
 This document defines the public contract between a TLSFerry certificate executor and a hosted DNS challenge control plane. It allows the executor to complete ACME DNS-01 without receiving the control plane's authoritative DNS credentials.
 
-The protocol client is implemented by the `tlsferry-cloud` DNS provider. A production TLSFerry Cloud endpoint is not included in Community Edition and is not yet generally available.
+The protocol client is implemented by the `tlsferry-cloud` DNS provider. The hosted production endpoint is operated separately from Community Edition and is not included in this repository.
 
 ## Trust boundary
 
