@@ -7,7 +7,7 @@ The project can issue real certificates through ACME DNS-01 and deploy them to T
 ## Editions
 
 - **TLSFerry CE** is this Apache-2.0 repository. It runs on infrastructure controlled by the user, keeps cloud credentials local, and provides the CLI, DNS providers, renewal scheduling, discovery, and multi-cloud certificate delivery.
-- **TLSFerry Cloud** is the planned managed service. Its hosted DNS validation, account system, billing, orchestration, and operations control plane are separate from this repository.
+- **TLSFerry Cloud** is the separately operated managed service at [console.tlsferry.com](https://console.tlsferry.com). Its hosted DNS validation, account system, entitlement management, orchestration, and operations control plane remain outside this repository; current account activation is handled manually.
 
 The shared certificate and provider behavior remains in CE. The commercial service sells hosted operation and reduced maintenance rather than a different certificate format or a deliberately broken community build. The enforced source and protocol boundary is documented in [docs/edition-boundary.md](docs/edition-boundary.md).
 
@@ -190,7 +190,7 @@ tlsferry auth login tencent
 
 If DNS is hosted by Cloudflare while CDN is hosted by Tencent Cloud, use separate credential references in the same certificate entry: `keychain:CLOUDFLARE` under `issuer` and `keychain:TENCENTCLOUD` under `deployments`.
 
-The `tlsferry-cloud` provider is the public executor-side contract for a hosted control plane. It uses a short-lived job token to present and clean one delegated ACME challenge without exposing the control plane's authoritative DNS credentials. The client is implemented in CE, but the hosted endpoint is not included or generally available. See [the remote DNS challenge protocol](docs/remote-dns-protocol.md).
+The `tlsferry-cloud` provider is the public executor-side contract for the hosted control plane. It uses a short-lived job token to present and clean one delegated ACME challenge without exposing the control plane's authoritative DNS credentials. The client is implemented in CE, while the managed endpoint and its private implementation are operated separately as TLSFerry Cloud. See [the remote DNS challenge protocol](docs/remote-dns-protocol.md).
 
 Before the first production issuance, optionally verify that a direct DNS credential can both create and remove the selected ACME record. Preview is read-only:
 
