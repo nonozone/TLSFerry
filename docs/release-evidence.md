@@ -9,8 +9,8 @@ Updating this tracked file creates a new Git commit, so it cannot truthfully emb
 | Field | Value |
 | --- | --- |
 | Version | Unversioned CE candidate (no `v*` tag authorized or created) |
-| Commit | `73a855cbf9542f42cf5224541076b06b76dd0787` |
-| Review date | `2026-07-31T12:55:25Z` |
+| Commit | `a69d1fe42c936cca077cdbacfb8e49d106298407` |
+| Review date | `2026-08-01T03:46:52Z` |
 | Reviewer | Local release audit (`Codex`) plus GitHub Actions |
 
 ## Automated evidence
@@ -18,8 +18,8 @@ Updating this tracked file creates a new Git commit, so it cannot truthfully emb
 | Requirement | Status | Evidence |
 | --- | --- | --- |
 | Clean CE/Cloud boundary | Pass | The candidate passed `make release-audit` and all `internal/edition` tests. The audit found no Cloud product implementation in CE; the only crossing point remains the public, versioned remote DNS protocol. |
-| Local release gate | Pass | `env GOCACHE=/private/tmp/tlsferry-go-cache make release-check AUDIT_VERSION=v0.1.0-rc.1 AUDIT_REVIEWER=Codex` passed from the clean candidate commit at `2026-07-31T12:55:25Z`; see the candidate evidence below. |
-| GitHub cross-platform CI | Pass | [CI run 30613478570](https://github.com/nonozone/TLSFerry/actions/runs/30613478570) passed for the exact candidate commit, including verification, Ubuntu, macOS, Windows, systemd, and Task Scheduler jobs. |
+| Local release gate | Pass | `env GOCACHE=/private/tmp/tlsferry-go-cache make release-check AUDIT_VERSION=v0.1.0-rc.1 AUDIT_REVIEWER=Codex` passed from the clean candidate commit at `2026-08-01T03:46:52Z`; see the candidate evidence below. |
+| GitHub cross-platform CI | Pass | [CI run 30632557082](https://github.com/nonozone/TLSFerry/actions/runs/30632557082) passed for the exact candidate commit, including verification, Ubuntu, macOS, Windows, systemd, and Task Scheduler jobs. |
 | Release archive integrity | Pass | The candidate passed local six-platform snapshot archive verification; the exact commit also passed native archive smoke on Ubuntu, macOS, and Windows in CI. See the candidate and reproducible archive evidence below. |
 | Public repository metadata | Pass | Verified for the candidate review: GitHub reports a public, active Apache-2.0 repository with `main` as its default branch. Required source files and security settings are covered by the evidence below. |
 
@@ -27,12 +27,12 @@ Generate the local, credential-free part of this table with `make release-audit 
 
 ### Current candidate automated evidence
 
-- Date and source: `2026-07-31T12:55:25Z`, commit `73a855cbf9542f42cf5224541076b06b76dd0787`, and [CI run 30613478570](https://github.com/nonozone/TLSFerry/actions/runs/30613478570).
+- Date and source: `2026-08-01T03:46:52Z`, commit `a69d1fe42c936cca077cdbacfb8e49d106298407`, and [CI run 30632557082](https://github.com/nonozone/TLSFerry/actions/runs/30632557082).
 - Local gate: `env GOCACHE=/private/tmp/tlsferry-go-cache make release-check AUDIT_VERSION=v0.1.0-rc.1 AUDIT_REVIEWER=Codex` passed from a clean tracked worktree. It ran the source and edition audit, all Go tests, credential-free functional smoke, `go vet`, `govulncheck v1.6.0`, both example configuration validations, GoReleaser configuration validation, six-platform snapshot builds, checksum verification, archive-content checks, and the native packaged-binary version smoke.
 - Vulnerability result: `govulncheck` reported zero reachable vulnerabilities and zero vulnerabilities in imported packages. It reported one module-only advisory that is not called by TLSFerry, consistent with the dependency evidence below.
-- Archive result: Linux, macOS, and Windows archives for amd64 and arm64 were present with checksums. Every archive contained `LICENSE`, `README.md`, `config.example.json`, `config.release-smoke.example.json`, and the platform binary; the native archived binary reported `TLSFerry 0.0.0-SNAPSHOT-73a855c`.
-- Exact-commit CI: [verify 91101293124](https://github.com/nonozone/TLSFerry/actions/runs/30613478570/job/91101293124), [Ubuntu 91101293220](https://github.com/nonozone/TLSFerry/actions/runs/30613478570/job/91101293220), [macOS 91101293174](https://github.com/nonozone/TLSFerry/actions/runs/30613478570/job/91101293174), [Windows 91101293225](https://github.com/nonozone/TLSFerry/actions/runs/30613478570/job/91101293225), [systemd 91101293151](https://github.com/nonozone/TLSFerry/actions/runs/30613478570/job/91101293151), and [Task Scheduler 91101293141](https://github.com/nonozone/TLSFerry/actions/runs/30613478570/job/91101293141) all completed successfully.
-- Publication state: verified on `2026-07-31`; the local repository has no tags and GitHub has no Releases. This records evidence only and does not authorize a tag or publication.
+- Archive result: Linux, macOS, and Windows archives for amd64 and arm64 were present with checksums. Every archive contained `LICENSE`, `README.md`, `config.example.json`, `config.release-smoke.example.json`, and the platform binary; the native archived binary reported `TLSFerry 0.0.0-SNAPSHOT-a69d1fe`.
+- Exact-commit CI: [verify 91162155057](https://github.com/nonozone/TLSFerry/actions/runs/30632557082/job/91162155057), [Ubuntu 91162155094](https://github.com/nonozone/TLSFerry/actions/runs/30632557082/job/91162155094), [macOS 91162155112](https://github.com/nonozone/TLSFerry/actions/runs/30632557082/job/91162155112), [Windows 91162155139](https://github.com/nonozone/TLSFerry/actions/runs/30632557082/job/91162155139), [systemd 91162155169](https://github.com/nonozone/TLSFerry/actions/runs/30632557082/job/91162155169), and [Task Scheduler 91162155114](https://github.com/nonozone/TLSFerry/actions/runs/30632557082/job/91162155114) all completed successfully.
+- Publication state: verified on `2026-08-01`; the local repository has no tags and GitHub has no Releases. This records evidence only and does not authorize a tag or publication.
 
 ### Public repository metadata and security evidence
 
